@@ -1,0 +1,636 @@
+/* Afya Smart dashibodi — mobile-first, rangi za afya (kijani/kibluu) */
+:root {
+  --bg: #f4f7f6;
+  --surface: #ffffff;
+  --text: #1c2b2a;
+  --muted: #64716f;
+  --primary: #0b7a4b;
+  --primary-dark: #085c39;
+  --danger: #c0392b;
+  --warn: #d68910;
+  --info: #2471a3;
+  --border: #dbe4e2;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Layout mbili za nguzo: foleni + simu ya USSD */
+.main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+}
+
+.main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Header */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--primary-dark);
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Buttons */
+.btn {
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.btn:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+/* Banner ya makosa */
+.banner-error {
+  background: #fdecea;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+/* Now serving */
+.now-serving {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+
+.now-serving-label {
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.now-serving-number {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.now-serving-meta {
+  margin-left: auto;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* Stats cards */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.card-icon {
+  font-size: 1.3rem;
+}
+
+.card-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.card-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.card-wait .card-value { color: var(--info); }
+.card-called .card-value { color: var(--warn); }
+.card-consult .card-value { color: var(--primary); }
+.card-done .card-value { color: var(--muted); }
+.card-danger .card-value { color: var(--danger); }
+
+/* Queue panel */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.empty {
+  color: var(--muted);
+  font-style: italic;
+  margin: 8px 0;
+}
+
+.queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.row-danger {
+  border-color: var(--danger);
+  background: #fdf3f2;
+}
+
+.queue-pos {
+  font-weight: 800;
+  min-width: 34px;
+}
+
+.queue-ticket {
+  font-weight: 600;
+}
+
+.queue-prio {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.queue-time {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.queue-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+/* Badges */
+.badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+
+.badge-danger { background: var(--danger); color: #fff; }
+.badge-warn { background: var(--warn); color: #fff; }
+.badge-info { background: var(--info); color: #fff; }
+.badge-plain { background: var(--border); color: var(--text); }
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+/* View tabs (Live / Analytics) */
+.view-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 2px solid var(--border);
+}
+
+.view-tab {
+  border: none;
+  background: transparent;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
+
+.view-tab.active {
+  color: var(--primary-dark);
+  border-bottom-color: var(--primary);
+}
+
+.view-tab:not(.active):hover {
+  color: var(--text);
+}
+
+/* Simu ya bandia ya USSD */
+.ussd-sim {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: sticky;
+  top: 12px;
+}
+
+.ussd-sim-head h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.ussd-phone {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.ussd-phone-frame {
+  background: #1e293b;
+  border-radius: 22px;
+  padding: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.ussd-screen {
+  background: #04140d;
+  border: 1px solid #123326;
+  border-radius: 12px;
+  min-height: 170px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 10px;
+  color: #d1fae5;
+  font-family: "Courier New", monospace;
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.ussd-status {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.62rem;
+  color: #6b7f78;
+  margin-bottom: 4px;
+}
+
+.ussd-idle {
+  color: #6b7f78;
+  text-align: center;
+  margin-top: 60px;
+}
+
+.ussd-end {
+  color: #fca5a5;
+}
+
+.ussd-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.ussd-key {
+  background: #334155;
+  color: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.05s;
+}
+
+.ussd-key:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ussd-key small {
+  font-size: 0.45rem;
+  letter-spacing: 2px;
+  opacity: 0.5;
+}
+
+.ussd-key:not(:disabled):active {
+  transform: scale(0.93);
+}
+
+.ussd-call {
+  width: 100%;
+  margin-top: 8px;
+  border: none;
+  border-radius: 12px;
+  height: 42px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: #10b981;
+  color: #052e1c;
+  cursor: pointer;
+}
+
+.ussd-clear {
+  width: 100%;
+  margin-top: 6px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.ussd-clear:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ussd-session-info {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+/* Analytics panel */
+.analytics-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.analytics-head h2 {
+  margin: 0;
+}
+
+.analytics-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.analytics-tab {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.analytics-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.analytics-days {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+}
+
+.chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.chart-bar {
+  fill: var(--info);
+  rx: 3;
+}
+
+.chart-bar-peak {
+  fill: var(--primary);
+}
+
+.chart-xlabel {
+  font-size: 10px;
+  fill: var(--muted);
+}
+
+.chart-area {
+  fill: rgba(11, 122, 75, 0.12);
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-dot {
+  fill: var(--primary-dark);
+}
+
+.analytics-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 8px 0 0;
+}
+
+/* Triage outcomes */
+.triage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.triage-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.triage-icon {
+  font-size: 1.2rem;
+}
+
+.triage-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.triage-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.triage-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.triage-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--info);
+}
+
+.triage-danger .triage-bar-fill { background: var(--danger); }
+.triage-danger .triage-value { color: var(--danger); }
+.triage-info .triage-bar-fill { background: var(--info); }
+.triage-info .triage-value { color: var(--info); }
+.triage-ok .triage-bar-fill { background: var(--primary); }
+.triage-ok .triage-value { color: var(--primary); }
+
+.triage-pct {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* Skrini ndogo */
+@media (max-width: 560px) {
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions .btn {
+    flex: 1;
+  }
+
+  .now-serving {
+    flex-wrap: wrap;
+  }
+
+  .now-serving-meta {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .queue-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+}

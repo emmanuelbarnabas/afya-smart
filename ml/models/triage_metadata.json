@@ -1,0 +1,122 @@
+{
+  "version": "ml-v1",
+  "trained_at": "2026-09-24T09:15:04.696838+00:00",
+  "algorithm": "gradient_boosting",
+  "n_samples": 12000,
+  "features": [
+    "breathing",
+    "conscious",
+    "bleeding",
+    "fever_days",
+    "pain_level",
+    "risk_group"
+  ],
+  "labels": [
+    "emergency",
+    "urgent",
+    "routine",
+    "self_care"
+  ],
+  "metrics": {
+    "accuracy": 0.8938,
+    "f1_macro": 0.8847,
+    "recall_emergency": 0.8806,
+    "cv_accuracy_mean": 0.896,
+    "cv_accuracy_std": 0.0045,
+    "confusion_matrix": [
+      [
+        236,
+        32,
+        0,
+        0
+      ],
+      [
+        30,
+        782,
+        36,
+        1
+      ],
+      [
+        30,
+        52,
+        785,
+        14
+      ],
+      [
+        2,
+        21,
+        37,
+        342
+      ]
+    ]
+  },
+  "all_results": {
+    "gradient_boosting": {
+      "accuracy": 0.8938,
+      "f1_macro": 0.8847,
+      "recall_emergency": 0.8806,
+      "cv_accuracy_mean": 0.896,
+      "cv_accuracy_std": 0.0045,
+      "confusion_matrix": [
+        [
+          236,
+          32,
+          0,
+          0
+        ],
+        [
+          30,
+          782,
+          36,
+          1
+        ],
+        [
+          30,
+          52,
+          785,
+          14
+        ],
+        [
+          2,
+          21,
+          37,
+          342
+        ]
+      ]
+    },
+    "logistic_regression": {
+      "accuracy": 0.7746,
+      "f1_macro": 0.7765,
+      "recall_emergency": 0.6343,
+      "cv_accuracy_mean": 0.7835,
+      "cv_accuracy_std": 0.0105,
+      "confusion_matrix": [
+        [
+          170,
+          85,
+          13,
+          0
+        ],
+        [
+          25,
+          619,
+          178,
+          27
+        ],
+        [
+          15,
+          130,
+          721,
+          15
+        ],
+        [
+          2,
+          14,
+          37,
+          349
+        ]
+      ]
+    }
+  },
+  "data_source": "synthetic \u2014 WHO IMCI / Tanzania ETAT triage logic with clinical noise"
+}

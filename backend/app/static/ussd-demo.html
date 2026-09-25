@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0f172a" />
+<title>Afya Smart — USSD Demo</title>
+<style>
+  :root {
+    --bg: #0f172a; --bezel: #1e293b; --screen: #04140d;
+    --text: #d1fae5; --dim: #6b7f78; --green: #10b981;
+    --key: #334155; --key-text: #f1f5f9; --danger: #ef4444;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: var(--bg); font-family: system-ui, sans-serif; padding: 16px;
+  }
+  h1 { color: #e2e8f0; font-size: 1rem; margin: 0; font-weight: 600; }
+  .hint { color: var(--dim); font-size: .8rem; text-align: center; max-width: 320px; }
+  .phone {
+    width: 300px; background: var(--bezel); border-radius: 28px; padding: 14px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5);
+  }
+  .screen {
+    background: var(--screen); border-radius: 14px; min-height: 200px;
+    padding: 12px; color: var(--text); font-family: "Courier New", monospace;
+    font-size: .82rem; white-space: pre-wrap; line-height: 1.45;
+    display: flex; flex-direction: column; margin-bottom: 12px;
+    border: 1px solid #123326; overflow-y: auto; max-height: 240px;
+  }
+  .screen .cursor { display: inline-block; width: 8px; background: var(--green); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .idle { color: var(--dim); text-align: center; margin: auto 0; }
+  .end-msg { color: #fca5a5; }
+  .con-msg { color: var(--text); }
+  .status { display: flex; justify-content: space-between; font-size: .65rem; color: var(--dim); margin-bottom: 4px; }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .key {
+    background: var(--key); color: var(--key-text); border: none; border-radius: 50%;
+    width: 62px; height: 62px; font-size: 1.25rem; font-weight: 600; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 0 auto; transition: transform .05s;
+  }
+  .key:active { transform: scale(.93); }
+  .key small { font-size: .5rem; letter-spacing: 2px; opacity: .5; }
+  .key.action { background: #0d9488; }
+  .key.call { background: var(--green); color: #052e1c; width: 100%; border-radius: 14px; height: 48px; font-size: .95rem; }
+  .key.end { background: var(--danger); color: #fff; }
+  .key-clear { background: transparent; border: none; color: var(--dim); font-size: .75rem; cursor: pointer; margin-top: 8px; width: 100%; }
+  .who { display: flex; gap: 8px; width: 300px; }
+  .who input {
+    flex: 1; background: var(--bezel); border: 1px solid #334155; color: #e2e8f0;
+    border-radius: 10px; padding: 8px 10px; font-size: .85rem;
+  }
+  .session { color: var(--dim); font-size: .7rem; }
+</style>
+</head>
+<body>
+  <h1>Afya Smart — Jaribio la USSD</h1>
+  <div class="hint">Simu hii ni ya majaribio: bonyeza namba kufuata menyu za code yako ya USSD. Uunganishwa na backend halisi ya Afya Smart.</div>
+
+  <div class="who">
+    <input id="phone" value="+255700000001" inputmode="tel" aria-label="Namba ya simu" />
+  </div>
+
+  <div class="phone">
+    <div class="screen" id="screen">
+      <div class="status"><span>AFYASMART</span><span id="net">▂▄▆ 📶</span></div>
+      <div class="idle" id="content">Bonyeza kitufe cha kijani<br/>kupiga *384*123#</div>
+    </div>
+    <div class="keypad" id="keypad">
+      <button class="key" data-k="1">1<small>&nbsp;</small></button>
+      <button class="key" data-k="2">2<small>ABC</small></button>
+      <button class="key" data-k="3">3<small>DEF</small></button>
+      <button class="key" data-k="4">4<small>GHI</small></button>
+      <button class="key" data-k="5">5<small>JKL</small></button>
+      <button class="key" data-k="6">6<small>MNO</small></button>
+      <button class="key" data-k="7">7<small>PQRS</small></button>
+      <button class="key" data-k="8">8<small>TUV</small></button>
+      <button class="key" data-k="9">9<small>WXYZ</small></button>
+      <button class="key" data-k="*">*&nbsp;</button>
+      <button class="key" data-k="0">0<small>&nbsp;</small></button>
+      <button class="key" data-k="#">#&nbsp;</button>
+    </div>
+    <button class="key call" id="btn-call" style="width:100%; margin-top:8px;">📶 Piga USSD</button>
+    <button class="key-clear" id="btn-clear">Futa input ▸</button>
+  </div>
+
+  <div class="session" id="session-info">Hakuna session</div>
+
+<script>
+  const content = document.getElementById("content");
+  const sessionInfo = document.getElementById("session-info");
+  const btnCall = document.getElementById("btn-call");
+  const btnClear = document.getElementById("btn-clear");
+
+  let session = null;      // { id, phone }
+  let path = [];           // majibu yaliyotumwa (kama AT: "1*1*0")
+  let buffer = "";         // input ya sasa
+  let state = "idle";      // idle | con | end
+  let serviceCode = "*384*123#"; //inasasishwa kutoka /ussd-config
+
+  // Pata service code halisi ya channel kutoka kwa backend
+  fetch("/ussd-config").then(r => r.json()).then(c => {
+    if (c?.service_code) serviceCode = c.service_code;
+    document.title = "Afya Smart — USSD " + serviceCode;
+    if (state === "idle") {
+      content.innerHTML = "Bonyeza kitufe cha kijani<br/>kupiga " + serviceCode;
+      btnCall.textContent = "📶 Piga " + serviceCode;
+    }
+  }).catch(() => {});
+
+  function render(text, kind) {
+    content.className = kind === "end" ? "end-msg" : "con-msg";
+    const cursor = state === "con" && buffer ? `<span class="cursor">${buffer}</span>` : "";
+    content.innerHTML = escapeHtml(text) + (cursor ? "\n> " + cursor : "");
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function setIdle() {
+    state = "idle"; session = null; path = []; buffer = "";
+    content.className = "idle";
+    content.innerHTML = "Bonyeza kitufe cha kijani<br/>kupiga " + serviceCode;
+    sessionInfo.textContent = "Hakuna session";
+    btnCall.textContent = "📶 Piga " + serviceCode;
+  }
+
+  async function send(text) {
+    const body = new URLSearchParams({
+      sessionId: session.id,
+      phoneNumber: session.phone,
+      text,
+      serviceCode: serviceCode,
+    });
+    let raw;
+    try {
+      const resp = await fetch("/api/v1/ussd", { method: "POST", body });
+      raw = await resp.text();
+    } catch (e) {
+      render(" HITILAFI YA MTANDAO:\n" + e.message + "\n\nSession imekatika.", "end");
+      setIdle();
+      return;
+    }
+    if (raw.startsWith("CON ")) {
+      state = "con"; buffer = "";
+      render(raw.slice(4), "con");
+      btnCall.textContent = "⏹ Maliza session";
+    } else if (raw.startsWith("END ")) {
+      state = "end";
+      render(raw.slice(4) + "\n\n— Session imekwisha —", "end");
+      btnCall.textContent = "📶 Piga tena " + serviceCode;
+    } else {
+      render("Jibu lisiloeleweka kutoka kwa server.", "end");
+      setIdle();
+    }
+  }
+
+  function dial() {
+    if (state === "con") { setIdle(); return; }   // kitufe kinawa maliza
+    const phone = document.getElementById("phone").value.trim() || "+255700000001";
+    session = { id: "web-" + Date.now() + "-" + Math.floor(Math.random() * 1e6), phone };
+    path = []; buffer = "";
+    sessionInfo.textContent = "Session: " + session.id.slice(0, 18) + "… · " + phone;
+    send("");
+  }
+
+  // Keypad: kila namba inaongezwa kwenye buffer; kitufe cha kijanikinatuma
+  document.getElementById("keypad").addEventListener("click", (ev) => {
+    const k = ev.target.closest(".key")?.dataset.k;
+    if (!k || state !== "con") return;
+    if (k === "*" || k === "#") return; // hazitumiki kwenye menyu hizi
+    buffer += k;
+    render(currentText, "con");
+  });
+
+  let currentText = "";
+
+  const _render = render;
+  render = function (text, kind) { currentText = text; _render(text, kind); };
+
+  btnCall.addEventListener("click", () => {
+    if (state === "con") {
+      if (!buffer) return;                       // hakuna cha kutuma
+      path.push(buffer); buffer = "";
+      send(path.join("*"));
+    } else {
+      dial();
+    }
+  });
+
+  btnClear.addEventListener("click", () => {
+    if (state === "con" && buffer) {
+      buffer = buffer.slice(0, -1);
+      render(currentText, "con");
+    }
+  });
+</script>
+</body>
+</html>

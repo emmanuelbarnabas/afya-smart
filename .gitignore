@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+.env.local
+
+# ML artifacts
+ml/artifacts/*.joblib
+
+# Node / React dashboard
+node_modules/
+dist/
+build/
+.vite/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Logs
+*.log
+
+# Dev SQLite DB
+*.db
+*.sqlite3
+
+# Blender scratch (haihusiki na mradi)
+blender-tmp/
