@@ -15,6 +15,10 @@ router = APIRouter(include_in_schema=False)
 _DIST = Path(__file__).resolve().parents[4] / "dashboard" / "dist"
 
 
+_NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
+_IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
+
+
 @router.get("/dashboard", include_in_schema=False)
 def dashboard_index():
     index = _DIST / "index.html"
@@ -23,7 +27,8 @@ def dashboard_index():
             "<h2>Dashboard haijajengwa</h2><p>Run: <code>cd dashboard && npm run build</code></p>",
             status_code=404,
         )
-    return FileResponse(index, media_type="text/html")
+    # index.html isiweze ku-cache — rebuild mpya ifike kwenye simu mara moja
+    return FileResponse(index, media_type="text/html", headers=_NO_CACHE)
 
 
 @router.get("/dashboard/{asset_path:path}", include_in_schema=False)
@@ -33,9 +38,11 @@ def dashboard_assets(asset_path: str):
     if _DIST.resolve() not in target.parents:
         return JSONResponse({"detail": "Not found"}, status_code=404)
     if target.is_file():
-        return FileResponse(target)
-    # SPA fallback — rudi index.html
+        # Faili za Vite zina hash kwenye jina — zinaweza ku-cache milele
+        headers = _IMMUTABLE if asset_path.startswith("assets/") else _NO_CACHE
+        return FileResponse(target, headers=headers)
+    # SPA fallback — rudi index.html (kwa routes za SPA tu)
     index = _DIST / "index.html"
     if index.is_file():
-        return FileResponse(index, media_type="text/html")
+        return FileResponse(index, media_type="text/html", headers=_NO_CACHE)
     return JSONResponse({"detail": "Not found"}, status_code=404)
