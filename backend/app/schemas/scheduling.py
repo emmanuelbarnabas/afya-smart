@@ -57,6 +57,11 @@ class QueueEntryOut(BaseModel):
     joined_at: datetime
     called_at: datetime | None = None
     completed_at: datetime | None = None
+    # Extra context ya dashboard (haitahi msingi wa QueueEntry)
+    patient_name: str | None = None
+    patient_phone: str | None = None
+    waited_minutes: int | None = None
+    position: int | None = None
 
 
 class CallNextResult(BaseModel):

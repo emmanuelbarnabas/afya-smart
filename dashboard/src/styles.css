@@ -78,54 +78,77 @@ body {
 .header-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
-/* Buttons */
-.btn {
-  border: none;
+/* Facility picker */
+.facility-picker {
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px 16px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: filter 0.15s ease;
+  padding: 9px 10px;
+  font-size: 0.88rem;
+  background: var(--surface);
+  color: var(--text);
+  max-width: 220px;
 }
 
-.btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: #fff;
-}
-
-.btn-danger {
-  background: var(--danger);
-  color: #fff;
-}
-
-.btn-sm {
-  padding: 6px 10px;
-  font-size: 0.8rem;
+/* Sound toggle */
+.btn-sound {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  color: var(--muted);
 }
 
-.btn:not(:disabled):hover {
-  filter: brightness(1.08);
+.btn-sound.on {
+  background: #e8f6ef;
+  border-color: var(--primary);
+  color: var(--primary-dark);
 }
 
-/* Banner ya makosa */
+/* Toast (uthibitisho) */
+.banner-toast {
+  background: #e8f6ef;
+  border: 1px solid var(--primary);
+  color: var(--primary-dark);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  animation: toast-in 0.25s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Error banner yenye kitufe cha kufunga */
 .banner-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   background: #fdecea;
   border: 1px solid var(--danger);
   color: var(--danger);
   border-radius: var(--radius);
   padding: 10px 14px;
   font-size: 0.9rem;
+}
+
+.banner-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 4px;
 }
 
 /* Now serving */
@@ -148,6 +171,12 @@ body {
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: 1px;
+}
+
+.now-serving-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  opacity: 0.95;
 }
 
 .now-serving-meta {
@@ -236,6 +265,40 @@ body {
 .row-danger {
   border-color: var(--danger);
   background: #fdf3f2;
+}
+
+.row-warn {
+  border-color: var(--warn);
+  background: #fdf8ec;
+}
+
+.queue-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.queue-name {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.queue-wait {
+  color: var(--warn);
+  font-weight: 600;
 }
 
 .queue-pos {

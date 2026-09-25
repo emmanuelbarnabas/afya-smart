@@ -12,6 +12,15 @@ function badge(entry) {
   return <span className="badge badge-plain">MIADI</span>;
 }
 
+function waitedLabel(mins) {
+  if (mins == null) return null;
+  if (mins < 1) return "sasa hivi";
+  if (mins < 60) return `amengoja ${mins} dk`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `amengoja ${h} sk ${m} dk` : `amengoja ${h} sk`;
+}
+
 export default function QueuePanel({ queue, onStatus, busy }) {
   return (
     <section className="panel">
@@ -20,15 +29,28 @@ export default function QueuePanel({ queue, onStatus, busy }) {
         <p className="empty">Hakuna mgonjwa kwenye foleni.</p>
       ) : (
         <ul className="queue-list">
-          {queue.map((entry, idx) => (
-            <li key={entry.id} className={entry.is_emergency_bypass ? "queue-row row-danger" : "queue-row"}>
-              <span className="queue-pos">#{idx + 1}</span>
-              <span className="queue-ticket">Tiketi {String(entry.id).padStart(3, "0")}</span>
-              {badge(entry)}
+          {queue.map((entry) => (
+            <li
+              key={entry.id}
+              className={
+                entry.is_emergency_bypass
+                  ? "queue-row row-danger"
+                  : entry.priority >= 10
+                    ? "queue-row row-warn"
+                    : "queue-row"
+              }
+            >
+              <span className="queue-pos">#{entry.position ?? "?"}</span>
+              <div className="queue-who">
+                <span className="queue-name">{entry.patient_name || "Mgonjwa (bila jina)"}</span>
+                <span className="queue-sub">
+                  Tiketi {String(entry.id).padStart(3, "0")} · {badge(entry)}{" "}
+                  {waitedLabel(entry.waited_minutes) && (
+                    <span className="queue-wait">· {waitedLabel(entry.waited_minutes)}</span>
+                  )}
+                </span>
+              </div>
               <span className="queue-prio">P{entry.priority}</span>
-              <span className="queue-time">
-                {new Date(entry.joined_at).toLocaleTimeString("sw-TZ", { hour: "2-digit", minute: "2-digit" })}
-              </span>
               <span className="queue-actions">
                 {STATUS_ACTIONS.map((a) => (
                   <button
