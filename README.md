@@ -69,11 +69,15 @@ afya-smart/
 │   │   └── services/     # Business logic (triage, queue, forecasting)
 │   └── tests/
 ├── ml/               # AI/ML: triage model + demand forecasting
-├── dashboard/        # React facility dashboard (to be scaffolded with Vite)
+├── dashboard/        # ADMIN — React facility dashboard (queue, analytics)
+├── patient/          # CLIENT — app ya mgonjwa (nafasi yangu, miadi, USSD)
 ├── infra/            # docker-compose (PostgreSQL), deployment configs
 ├── docs/             # Documentation (docs/API.md, docs/DEMO.md)
 └── README.md
 ```
+
+**Platforma mbili:** Admin (`/admin` — kwa front-desk) na Client (`/app` — kwa mgonjwa).
+Backend inahudumia zote mbili baada ya build.
 
 ## 6. Success Looks Like
 

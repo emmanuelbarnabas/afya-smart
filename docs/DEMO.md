@@ -36,16 +36,23 @@ curl http://localhost:8000/api/v1/facilities      # demo dispensary
 
 ## 2. Demo ya ndani (bila simu halisi)
 
-- **USSD simulator:** http://localhost:8000/ussd-demo — inaita callback halisi ya `/api/v1/ussd`.
-- **Dashibodi:** http://localhost:5173 — foleni hai, "🚨 Dharura (Bypass)", "📣 Ita Mgonjwa", analytics.
-- **API docs (Swagger):** http://localhost:8000/docs
+Platforma ni mbili, zinatofautishwa:
+
+| Platform | URL (dev) | Kwa nani |
+|---|---|---|
+| **Admin** (dashibodi ya kituo) | http://localhost:5173 au `:8000/admin` | Front-desk: foleni hai, dharura bypass, ita mgonjwa, analytics |
+| **Client** (app ya mgonjwa) | `:8000/app` | Mgonjwa: nafasi yangu, miadi, USSD simulator |
+| USSD simulator (ya kale) | http://localhost:8000/ussd-demo | Demo ya callback halisi |
+| API docs (Swagger) | http://localhost:8000/docs | Developers |
+
+Apps mbili zinajengwa tofauti: `cd dashboard && npm run build` (admin) na `cd patient && npm run build` (client). Backend inazihudumia zote mbili.
 
 ### Kufungua kwenye SIMU (portalaini)
 
 1. Anzisha tunnel: `./tunnel.sh` → `https://<something>.trycloudflare.com`
 2. Simu (karibu na PC kwa WiFi au data):
-   - **Dashibodi:** `https://<tunnel-url>/dashboard` (inahudumiwa na backend moja kwa moja)
-   - **USSD simulator:** `https://<tunnel-url>/ussd-demo`
+   - **App ya mgonjwa:** `https://<tunnel-url>/app`
+   - **Dashibodi ya admin:** `https://<tunnel-url>/admin`
 3. USSD *halisi* kwa dial pad: fuata sehemu ya 3 hapa chini.
 
 Mwilikio wa haraka wa USSD (screen ya kwanza):

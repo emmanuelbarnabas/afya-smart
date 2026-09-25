@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import StatsCards from "./components/StatsCards.jsx";
 import QueuePanel from "./components/QueuePanel.jsx";
-import UssdSim from "./components/UssdSim.jsx";
 import AnalyticsPanel from "./components/AnalyticsPanel.jsx";
 
 const POLL_MS = 5000;
@@ -143,7 +142,7 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div>
-          <h1>Afya Smart</h1>
+          <h1>Afya Smart — Admin</h1>
           <p className="subtitle">Dashibodi ya Kituo — {facility?.name ?? "..."}</p>
         </div>
         <div className="header-actions">
@@ -235,9 +234,6 @@ export default function App() {
             <AnalyticsPanel facilityId={facilityId} />
           )}
         </div>
-        <aside className="side-col">
-          <UssdSim />
-        </aside>
       </div>
 
       <footer className="footer">
