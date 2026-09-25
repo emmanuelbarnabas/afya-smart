@@ -40,6 +40,14 @@ curl http://localhost:8000/api/v1/facilities      # demo dispensary
 - **Dashibodi:** http://localhost:5173 — foleni hai, "🚨 Dharura (Bypass)", "📣 Ita Mgonjwa", analytics.
 - **API docs (Swagger):** http://localhost:8000/docs
 
+### Kufungua kwenye SIMU (portalaini)
+
+1. Anzisha tunnel: `./tunnel.sh` → `https://<something>.trycloudflare.com`
+2. Simu (karibu na PC kwa WiFi au data):
+   - **Dashibodi:** `https://<tunnel-url>/dashboard` (inahudumiwa na backend moja kwa moja)
+   - **USSD simulator:** `https://<tunnel-url>/ussd-demo`
+3. USSD *halisi* kwa dial pad: fuata sehemu ya 3 hapa chini.
+
 Mwilikio wa haraka wa USSD (screen ya kwanza):
 
 ```bash

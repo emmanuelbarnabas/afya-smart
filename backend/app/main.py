@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import analytics, demo, health, queue, slots, ussd
+from app.api.routers import analytics, dashboard, demo, health, queue, slots, ussd
 from app.core.config import settings
 
 
@@ -64,3 +64,4 @@ app.include_router(slots.router, prefix="/api/v1")
 app.include_router(queue.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(demo.router)
+app.include_router(dashboard.router)
