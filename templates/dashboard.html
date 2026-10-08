@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Afya Smart — Nurse Dashboard</title>
+  <style>
+    :root {
+      --red: #b00020;
+      --yellow: #e0a000;
+      --green: #1a7a3a;
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: #0f172a;
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 18px; margin: 0; }
+    header .sub { font-size: 12px; color: #94a3b8; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 16px; }
+
+    /* Queue table */
+    .queue-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    .queue-section h2 {
+      font-size: 16px;
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+    th { background: #f9fafb; color: var(--muted); font-weight: 600; }
+    tr.urgent { background: #fff5f5; }
+    tr.waiting { background: #f0fdfa; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      color: #fff;
+    }
+    .badge-red    { background: var(--red); }
+    .badge-yellow { background: var(--yellow); }
+    .badge-green  { background: var(--green); }
+
+    .action-btns {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .btn {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn:hover { background: #f3f4f6; }
+    .btn-arrive { background: #dcfce7; border-color: #86efac; color: #166534; }
+    .btn-finish { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+    .btn-cancel { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 8px 0;
+    }
+    .refresh-info {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      padding: 6px;
+    }
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 24px;
+    }
+    .level-control {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .level-control select {
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    /* Audit log */
+    .audit-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    .audit-section h2 { font-size: 16px; margin: 0 0 8px; }
+    .audit-log { max-height: 220px; overflow-y: auto; font-size: 12px; }
+    .audit-log li { padding: 4px 0; border-bottom: 1px solid var(--border); }
+    .audit-log li:last-child { border-bottom: none; }
+    .audit-log .who { color: var(--muted); }
+
+    .facility-picker {
+      margin-bottom: 12px;
+    }
+    .facility-picker select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Afya Smart &mdash; Nurse Dashboard</h1>
+    <span class="sub">Live queue &middot; front-desk</span>
+  </header>
+
+  <div class="container">
+    <!-- Facility + queue -->
+    <div class="facility-picker">
+      <label for="facility">Kituo:</label>
+      <select id="facility"></select>
+    </div>
+
+    <div class="queue-section" id="queue-section">
+      <h2>
+        <span id="queue-count">0</span> patients in queue
+      </h2>
+      <div class="status" id="status">Loading&hellip;</div>
+
+      <table id="queue-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Patient</th>
+            <th>Level</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Joined</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="action-btns">
+        <button class="btn btn-arrive" id="btn-arrive">Mark arrived</button>
+        <button class="btn btn-finish" id="btn-finish">Finish</button>
+        <button class="btn btn-cancel" id="btn-cancel">Mark cancelled</button>
+      </div>
+      <div class="level-control">
+        <label for="override-level">Override level:</label>
+        <select id="override-level">
+          <option value="RED">RED</option>
+          <option value="YELLOW">YELLOW</option>
+          <option value="GREEN">GREEN</option>
+        </select>
+      </div>
+      <button class="btn" id="btn-override" style="margin-top:6px;">Change level</button>
+
+      <div class="refresh-info">Auto-refreshes every 4 seconds &middot; levels/who changes are logged in the audit panel</div>
+    </div>
+
+    <!-- Audit log -->
+    <div class="audit-section">
+      <h2>Recent audit log</h2>
+      <ul class="audit-log" id="audit-log"></ul>
+    </div>
+  </div>
+
+  <script>
+    // ---------------------------------------------------------------------------
+    // Live queue for the front-desk nurse.
+    //
+    //  - polls /api/queue every 4 seconds (auto-refresh)
+    //  - /api/queue/status        : "arrived" | "finished" | "cancelled"
+    //  - /api/queue/override      : change a patient's level (log who did it)
+    //  - /api/audit               : show the audit trail
+    // ---------------------------------------------------------------------------
+
+    const state = {
+      facilityId: 1,
+      queue: [],
+    };
+
+    // Worker elements.
+    const tbody = document.querySelector("#queue-table tbody");
+    const statusEl = document.querySelector("#status");
+    const auditEl = document.querySelector("#audit-log");
+    const countEl = document.querySelector("#queue-count");
+    const facilitySelect = document.querySelector("#facility");
+    const overrideLevel = document.querySelector("#override-level");
+    const btnOverride = document.querySelector("#btn-override");
+    const btnArrive = document.querySelector("#btn-arrive");
+    const btnFinish = document.querySelector("#btn-finish");
+    const btnCancel = document.querySelector("#btn-cancel");
+
+    // --- fetch the list of facilities ----------------------------------------
+    async function loadFacilities() {
+      const res = await fetch("/api/facility");
+      const facilities = await res.json();
+      facilitySelect.innerHTML = "";
+      for (const f of facilities) {
+        const opt = document.createElement("option");
+        opt.value = f.id;
+        opt.textContent = f.name;
+        facilitySelect.appendChild(opt);
+      }
+      if (facilitySelect.options.length > 0) {
+        facilitySelect.value = state.facilityId;
+      }
+    }
+
+    // --- render the queue for one facility ---------------------------------.
+    function renderQueue(rows) {
+      // Keep only this facility's rows.
+      const filtered = rows.filter(r => r.facility_id == state.facilityId);
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='7' class='empty'>No patients yet.</td></tr>";
+        countEl.textContent = "0";
+        return;
+      }
+
+      tbody.innerHTML = "";
+      countEl.textContent = filtered.length;
+
+      // Sort: RED first, then YELLOW, then GREEN, then by joined time (oldest first).
+      const order = { RED: 0, YELLOW: 1, GREEN: 2 };
+      filtered.sort((a, b) => {
+        const oa = order[a.level] ?? 9;
+        const ob = order[b.level] ?? 9;
+        if (oa !== ob) return oa - ob;
+        return new Date(a.joined_at) - new Date(b.joined_at);
+      });
+
+      for (const row of filtered) {
+        const tr = document.createElement("tr");
+        tr.className = row.level.toLowerCase();
+
+        const name = (row.full_name || "Anonymous").trim() || "Patient";
+        const level = row.level || "GREEN";
+        const reason = row.reason || "";
+        const status = row.status || "waiting";
+        const joined = row.joined_at
+          ? new Date(row.joined_at).toLocaleString()
+          : "";
+
+        tr.innerHTML = `
+          <td>#${row.id}</td>
+          <td><strong>${escapeHtml(name)}</strong>${row.phone_number ? `<br><span class="muted">${escapeHtml(row.phone_number)}</span>` : ""}</td>
+          <td><span class="badge badge-${level.toLowerCase()}">${level}</span></td>
+          <td class="muted">${escapeHtml(reason)}</td>
+          <td>${status}</td>
+          <td class="muted">${joined}</td>
+          <td>
+            <button class="btn" onclick="callStatus(this, 'status')" data-id="${row.id}" data-action="status">${status}</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    // --- call a status change endpoint -------------------------------------.
+    async function callStatus(btn, extraAction) {
+      const id = btn.dataset.id;
+      let action = btn.dataset.action;
+      if (extraAction) action = extraAction;
+
+      const ok = await postJson("/api/queue/status", { entry_id: id, action, actor: "nurse" });
+      if (ok) {
+        loadQueue();          // re-render
+        loadAudit();          // show the new audit line
+      } else {
+        statusEl.textContent = "Failed to update status.";
+      }
+    }
+
+    // --- override a patient's level ----------------------------------------.
+    btnOverride.onclick = async () => {
+      const selected = tbody.querySelector("tr.selected");
+      if (!selected) { statusEl.textContent = "Please select a patient first."; return; }
+      const id = selected.dataset.id;
+      const level = overrideLevel.value;
+
+      const ok = await postJson("/api/queue/override", {
+        entry_id: id,
+        new_level: level,
+        actor: "nurse",
+      });
+      if (ok) {
+        loadQueue();
+        loadAudit();
+        overrideLevel.value = "GREEN";   // reset so the nurse doesn't re-apply
+        statusEl.textContent = `Level changed to ${level}.`;
+      } else {
+        statusEl.textContent = "Failed to override level.";
+      }
+    };
+
+    // --- simple SELECT clicking (for the override) -------------------------.
+    tbody.addEventListener("click", (e) => {
+      const tr = e.target.closest("tr");
+      if (!tr) return;
+      tr.classList.toggle("selected");
+      // Remove selection from sibling rows.
+      tbody.querySelectorAll("tr").forEach((r) => {
+        if (r !== tr) r.classList.remove("selected");
+      });
+    });
+
+    // --- reload the queue + audit every few seconds ------------------------.
+    async function loadQueue() {
+      const res = await fetch(`/api/queue`);
+      state.queue = await res.json();
+      renderQueue(state.queue);
+    }
+
+    async function loadAudit() {
+      const res = await fetch("/api/audit");
+      const rows = await res.json();
+      auditEl.innerHTML = "";
+      for (const r of rows) {
+        const li = document.createElement("li");
+        li.innerHTML =
+          `<span class="who">${escapeHtml(r.actor || "")}</span> ` +
+          `<span class="accent">${escapeHtml(r.action || "")}</span> ` +
+          `<span class="date">${escapeHtml(r.created_at || "")}</span>`;
+        auditEl.appendChild(li);
+      }
+    }
+
+    // --- tiny JSON helper ------------------------------------------------.
+    async function postJson(url, payload) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({}));
+      return res.ok && !body.error;
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s == null ? "" : String(s);
+      return div.innerHTML;
+    }
+
+    // --- boot -------------------------------------------------------------.
+    loadFacilities();
+    loadQueue();
+    loadAudit();
+    setInterval(loadQueue, 4000);
+  </script>
+</body>
+</html>

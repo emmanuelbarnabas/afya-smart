@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Afya Smart — USSD Simulator</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --green: #1a7a3a;
+      --red: #b00020;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: #0f172a;
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 18px; margin: 0; }
+    .container { max-width: 520px; margin: 0 auto; padding: 16px; }
+    .simulator {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .simulator textarea {
+      width: 100%;
+      height: 80px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 13px;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      resize: vertical;
+    }
+    .phone {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .phone label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+    .phone input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .actions button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .actions .test-button {
+      background: var(--green);
+      color: #fff;
+    }
+    .actions .demo-button {
+      background: #3b82f6;
+      color: #fff;
+    }
+    .screen {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      min-height: 90px;
+      white-space: pre-line;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .screen .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .screen.end {
+      border-color: var(--red);
+      background: #fff5f5;
+    }
+    .screen.con {
+      border-color: var(--green);
+    }
+    .result {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      padding: 6px;
+    }
+    .legend {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend span { padding: 2px 8px; border-radius: 4px; }
+    .legend .con { background: #f0fdf4; border: 1px solid #86efac; }
+    .legend .end { background: #fef7f7; border: 1px solid #fca5a5; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Afya Smart &mdash; USSD Simulator</h1>
+    <span class="sub">Web clone of the Africa's Talking USSD session</span>
+  </header>
+
+  <div class="container">
+    <div class="phone">
+      <label for="phone">Phone number (Africa's Talking sends this as `phoneNumber`)</label>
+      <input id="phone" type="tel" value="+255712345678" />
+    </div>
+
+    <div class="simulator">
+      <label for="text">Session history (answers joined with `*`)</label>
+      <textarea id="text" placeholder="Leave empty for a new session..."></textarea>
+      <div class="actions">
+        <button class="test-button" id="send">Send</button>
+        <button class="demo-button" id="demo">Load demo answers</button>
+      </div>
+      <div class="legend">
+        <span class="con">CON = keep session open</span>
+        <span class="end">END = close session</span>
+      </div>
+    </div>
+
+    <div class="screen" id="screen">
+      <div class="label">Screen</div>
+      Karibu kwa Afya Smart! (Taarifa inaanza na CON, imeendeshwa na END)
+    </div>
+
+    <div class="screen" id="raw">
+      <div class="label">Raw HTTP response</div>
+      <pre id="raw-body"></pre>
+    </div>
+
+    <div class="result" id="result">Enter a phone number and answers, then Send.</div>
+  </div>
+
+  <script>
+    const screen = document.getElementById("screen");
+    const raw = document.getElementById("raw-body");
+    const result = document.getElementById("result");
+
+    // The simulator POSTs to the SAME /ussd endpoint as Africa's Talking.
+    async function send() {
+      const phone = document.getElementById("phone").value.trim();
+      const text = document.getElementById("text").value;
+      const payload = new URLSearchParams({ phoneNumber: phone, text });
+      result.textContent = "Sending...";
+
+      const res = await fetch("/ussd", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: payload,
+      });
+
+      const body = await res.text();
+      raw.textContent = `[HTTP ${res.status}] ${res.headers.get("content-type")}\n${body}`;
+
+      // Render the reply: lines separated by \n become individual screens.
+      const lines = body.split("\n");
+      let html = "";
+      for (const line of lines) {
+        if (line.startsWith("CON ")) {
+          html += `<div class="screen con">${escapeHtml(line.slice(4))}</div>`;
+        } else if (line.startsWith("END ")) {
+          html += `<div class="screen end">${escapeHtml(line.slice(4))}</div>`;
+        } else {
+          html += `<div class="screen">${escapeHtml(line)}</div>`;
+        }
+      }
+      screen.innerHTML = html || '<div class="screen">(no response)</div>';
+      result.textContent = `Got HTTP ${res.status} from /ussd.`;
+    }
+
+    async function demo() {
+      // A full demo session: male, fever, age 30, no chest/chest/blood, facility 1.
+      const answers = ["1", "1", "30", "2", "2", "2", "1"];
+      document.getElementById("text").value = answers.join("*");
+      await send();
+    }
+
+    document.getElementById("send").addEventListener("click", send);
+    document.getElementById("demo").addEventListener("click", demo);
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s == null ? "" : String(s);
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
