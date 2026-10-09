@@ -260,11 +260,13 @@ clinic average**. All demo data is synthetic.
   `backend/ml/train_triage.py` in the original repo, re-implemented here as
   `triage.py` rules for the prototype).
 - **Hospital integration** — HL7/FHIR feeds for arrival times, bed status.
-- **Webhook retries** — Africa's Talking retries POSTs; `ussd.py` currently
-  replies idempotently by remembering the last answer-chain + reply per
-  phone number (a replayed chain returns the cached reply, no duplicate
-  visit). The session store is in-memory — move it to Redis/Postgres before
-  running more than one worker process.
+- **Webhook retries** — Africa's Talking retries POSTs; `ussd.py` replies
+  idempotently by remembering the last answer-chain + reply per phone number
+  (a replayed chain returns the cached reply, no duplicate visit). Sessions
+  and the reply cache persist in the `ussd_sessions` SQLite table (idle rows
+  expire after 24h), so a server restart never loses a half-finished
+  registration. Before running more than one worker process, move the store
+  to Redis/Postgres — SQLite serializes writes across processes.
 - **Multi-facility / address** — add a `facility_id` + district to every row
   so the queue can serve several clinics.
 

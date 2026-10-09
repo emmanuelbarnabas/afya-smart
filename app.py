@@ -127,9 +127,7 @@ def init_db() -> None:
                 called_at  TEXT,
                 completed_at TEXT,
                 FOREIGN KEY (patient_id) REFERENCES patients(id)
-            );
-
-            -- audit_log: an append-only trail of every important change. We
+            );            -- audit_log: an append-only trail of every important change. We
             -- never edit rows in place -- the only place a row is touched is
             -- the same place it was created, so we log what happened.
             CREATE TABLE IF NOT EXISTS audit_log (
@@ -138,9 +136,24 @@ def init_db() -> None:
                 action     TEXT NOT NULL,           -- what happened
                 table_name TEXT NOT NULL,           -- which table
                 record_id  INTEGER,                 -- which row
-                detail     TEXT,                     -- small note
+                detail     TEXT,                    -- small note
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
+
+            -- ussd_sessions: where each phone's USSD registration currently
+            -- stands (step + answers so far) plus the last chain/reply for
+            -- idempotent webhook retries. Persisted so a server restart never
+            -- loses a half-finished registration. Rows older than 24h are
+            -- pruned on write (see ussd.py).
+            CREATE TABLE IF NOT EXISTS ussd_sessions (
+                phone_number TEXT PRIMARY KEY,
+                step         INTEGER,               -- NULL = no active registration
+                answers      TEXT,                  -- JSON {key: value}
+                last_chain   TEXT,                  -- last webhook chain (retry dedup)
+                last_reply   TEXT,                  -- reply we gave for that chain
+                updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
 
             -- Seed demo data (only if the tables are empty).
             INSERT OR IGNORE INTO facilities (id, name, level, region, district)

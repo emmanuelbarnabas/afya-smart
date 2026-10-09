@@ -250,3 +250,70 @@ def test_every_reply_starts_with_con_or_end():
     for chain in chains:
         reply = send(PHONE, chain)
         assert reply.startswith(("CON ", "END ")), (chain, reply[:40])
+
+
+# --------------------------------------------------------------------------- #
+# Session persistence (ussd_sessions SQLite table)
+# --------------------------------------------------------------------------- #
+
+def test_session_survives_restart():
+    """A restart (memory cache cleared) must not lose the patient's answers."""
+    assert "Jinsia" in send(PHONE, "1")
+    assert "homa" in send(PHONE, "1*1")     # sex answered -> fever question
+    assert "Umri" in send(PHONE, "1*1*2")   # fever answered -> age question
+
+    # Simulate a server restart: memory caches gone, SQLite kept.
+    ussd._SESSION.clear()
+    ussd._LAST_REPLY.clear()
+
+    # The session was rehydrated from ussd_sessions: only the NEW answer is
+    # applied (no bootstrap replay), so the flow continues at chest pain.
+    reply = send(PHONE, "1*1*2*30")
+    assert "kifua" in reply
+
+
+def test_retry_reply_survives_restart():
+    """A webhook retry after a restart still returns the cached reply."""
+    first = send(PHONE, "1*1*2*30*2*2*2*1")
+    assert first.startswith("END ")
+
+    ussd._SESSION.clear()
+    ussd._LAST_REPLY.clear()
+
+    replay = send(PHONE, "1*1*2*30*2*2*2*1")
+    assert replay == first
+    with appmod.get_db() as db:
+        n = db.execute("SELECT COUNT(*) AS n FROM visits").fetchone()["n"]
+        assert n == 1  # no second visit from the replayed webhook
+
+
+def test_stale_sessions_pruned_after_24h():
+    """Rows idle for a day are dropped on write (bounded table growth)."""
+    with appmod.get_db() as db:
+        db.execute(
+            "INSERT INTO ussd_sessions "
+            "(phone_number, step, answers, last_chain, last_reply, updated_at) "
+            "VALUES (?, 3, '{}', 'old', 'CON old', datetime('now', '-2 days'))",
+            ("+255711100099",),
+        )
+        db.commit()
+
+    send(PHONE, "1")  # any new activity triggers the prune in _save()
+
+    with appmod.get_db() as db:
+        row = db.execute(
+            "SELECT 1 FROM ussd_sessions WHERE phone_number = ?",
+            ("+255711100099",),
+        ).fetchone()
+    assert row is None
+
+
+def test_active_session_not_pruned():
+    """The 24h prune only drops stale rows — fresh sessions stay."""
+    send(PHONE, "1*1*2")
+    with appmod.get_db() as db:
+        row = db.execute(
+            "SELECT step FROM ussd_sessions WHERE phone_number = ?", (PHONE,)
+        ).fetchone()
+    assert row is not None
+    assert row["step"] == 3

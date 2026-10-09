@@ -20,7 +20,8 @@ is asked the same question again.
 
 Webhook retries are handled by remembering the last chain + reply per phone:
 a replayed POST returns the cached reply and never inserts a second visit.
-(In production the session store belongs in Redis/Postgres — see README.)
+Sessions persist in the ``ussd_sessions`` SQLite table, so a server restart
+never loses a half-finished registration; rows idle for 24h are pruned.
 
 There is exactly one active visit per phone number: if a patient has already
 registered (their visit is still waiting / called / in consult) they are told
@@ -29,12 +30,18 @@ their queue position instead of registering again.
 
 from __future__ import annotations
 
+import json
+
 from app import get_db
 from triage import triage
 
 # --------------------------------------------------------------------------- #
-# Session state (memory-backed; one active registration per phone number)
+# Session state (write-through cache over the ussd_sessions SQLite table)
 # --------------------------------------------------------------------------- #
+# One active registration per phone number.  The dicts below are only a
+# cache; the source of truth is the ``ussd_sessions`` table (created in
+# app.init_db), so a server restart rehydrates the step instead of losing
+# the patient's answers.
 # phone_number -> {"step": int, "answers": {key: value}}
 #   step 0        = menu shown, waiting for the menu choice
 #   step 1..N     = answering STEPS[step - 1]
@@ -65,7 +72,83 @@ def _get_session(phone_number):
 
 
 def _clear_session(phone_number):
+    """Forget the active registration (an END reply closes it).
+
+    Memory only: the next ``_save()`` writes the cleared state back to
+    SQLite, so the retry cache for the last chain still survives.
+    """
     _SESSION.pop(phone_number, None)
+
+
+def _forget(phone_number):
+    """Drop everything we know about this phone (fresh session start)."""
+    _SESSION.pop(phone_number, None)
+    _LAST_REPLY.pop(phone_number, None)
+    with get_db() as db:
+        db.execute(
+            "DELETE FROM ussd_sessions WHERE phone_number = ?", (phone_number,)
+        )
+        db.commit()
+
+
+def _hydrate(db, phone_number):
+    """Pull this phone's session + last reply back from SQLite.
+
+    Called on every request; a no-op while the memory cache is warm.  This
+    is what makes a server restart harmless in the middle of a registration.
+    """
+    if phone_number in _SESSION and phone_number in _LAST_REPLY:
+        return
+    row = db.execute(
+        "SELECT step, answers, last_chain, last_reply FROM ussd_sessions "
+        "WHERE phone_number = ?",
+        (phone_number,),
+    ).fetchone()
+    if row is None:
+        return
+    if phone_number not in _SESSION and row["step"] is not None:
+        _SESSION[phone_number] = {
+            "step": row["step"],
+            "answers": json.loads(row["answers"] or "{}"),
+        }
+    if phone_number not in _LAST_REPLY and row["last_chain"] is not None:
+        _LAST_REPLY[phone_number] = (row["last_chain"], row["last_reply"])
+
+
+def _save(db, phone_number, chain, reply):
+    """Persist this phone's session + last reply, then prune stale rows.
+
+    The session may have been closed while processing (END reply): step and
+    answers are then stored as NULL while the retry cache still survives.
+    Rows idle for more than 24 hours are dropped so the table stays bounded
+    (growth is no longer unbounded memory only).
+    """
+    session = _SESSION.get(phone_number)
+    db.execute(
+        """
+        INSERT INTO ussd_sessions
+            (phone_number, step, answers, last_chain, last_reply, updated_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(phone_number) DO UPDATE SET
+            step = excluded.step,
+            answers = excluded.answers,
+            last_chain = excluded.last_chain,
+            last_reply = excluded.last_reply,
+            updated_at = excluded.updated_at
+        """,
+        (
+            phone_number,
+            session["step"] if session else None,
+            json.dumps(session["answers"], ensure_ascii=False) if session else None,
+            chain,
+            reply,
+        ),
+    )
+    db.execute(
+        "DELETE FROM ussd_sessions "
+        "WHERE updated_at < strftime('%Y-%m-%d %H:%M:%S', 'now', '-1 day')"
+    )
+    db.commit()
 
 
 # --------------------------------------------------------------------------- #
@@ -447,26 +530,29 @@ def _respond(phone_number, answers):
 
     # New session (empty chain): show the menu, drop any stale state.
     if not answers:
-        _clear_session(phone_number)
-        _LAST_REPLY.pop(phone_number, None)
+        _forget(phone_number)
         return MENU
-
-    # Webhook retry: the exact same chain was replayed — reply identically
-    # and do NOT process the answer a second time (no duplicate visits).
-    cached = _LAST_REPLY.get(phone_number)
-    if cached is not None and cached[0] == chain:
-        return cached[1]
 
     newest = answers[-1].strip()
 
     with get_db() as db:
+        # Restart resilience: reload this phone's state from SQLite
+        # (no-op while the memory cache is warm).
+        _hydrate(db, phone_number)
+
+        # Webhook retry: the exact same chain was replayed — reply identically
+        # and do NOT process the answer a second time (no duplicate visits).
+        cached = _LAST_REPLY.get(phone_number)
+        if cached is not None and cached[0] == chain:
+            return cached[1]
+
         had_session = phone_number in _SESSION
         session = _get_session(phone_number)
 
         if not had_session and len(answers) > 1:
-            # Cold start with a full chain (curl example, server restart, or
-            # a session store that was cleared): replay every element through
-            # the state machine, exactly as the patient walked it live.
+            # Cold start with a full chain (a brand-new phone replaying every
+            # answer at once — the README/curl style): replay each element
+            # through the state machine, exactly as the patient walked it.
             reply = MENU
             for element in answers:
                 reply = _step(phone_number, db, session, element.strip())
@@ -476,8 +562,9 @@ def _respond(phone_number, answers):
             # Normal live flow: only the last element is new.
             reply = _step(phone_number, db, session, newest)
 
-        # Cache for idempotent webhook retries (bounded).
+        # Cache for idempotent webhook retries (bounded), then persist.
         if len(_LAST_REPLY) > _SESSION_TTL_CHAINS:
             _LAST_REPLY.clear()
         _LAST_REPLY[phone_number] = (chain, reply)
+        _save(db, phone_number, chain, reply)
         return reply
