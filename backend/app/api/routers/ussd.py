@@ -9,7 +9,7 @@ Jibu ni maandishi yaliyoanza na "CON " (endelea) au "END " (maliza).
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import PlainTextResponse
@@ -36,8 +36,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "welcome": "Karibu AFYA SMART\n1. Kiswahili\n2. English",
         "menu": "Chagua huduma:\n1. Kagua dalili zako\n2. Miadi/Ongeza muda\n3. Nafasi yangu kwenye foleni",
         "invalid": "Jibu si sahihi. Jaribu tena.",
-        "slot_header": "Chagua muda wa miadi (leo):",
-        "no_slots": "Samahani, hakuna nafasi zilizobaki leo. Jaribu tena kesho asubuhi.",
+        "slot_header": "Chagua muda wa miadi:",
+        "slot_today_tag": "leo",
+        "slot_tomorrow_tag": "kesho",
+        "no_slots": "Samahani, hakuna nafasi leo na kesho. Jaribu tena kesho asubuhi.",
         "booked_ok": "Miadi imethibitishwa: {label}. Utapokelewa SMS.",
         "queue_status": "Nafasi yako: #{pos}. Wasilisha namba yako ukifika.",
         "queue_none": "Hujaingia kwenye foleni. Tumia menyu ya 1 kuanza.",
@@ -48,8 +50,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "welcome": "Welcome to AFYA SMART\n1. Kiswahili\n2. English",
         "menu": "Choose a service:\n1. Check your symptoms\n2. Book an appointment\n3. My queue position",
         "invalid": "Invalid input. Try again.",
-        "slot_header": "Choose an appointment time (today):",
-        "no_slots": "Sorry, no slots left today. Try again tomorrow morning.",
+        "slot_header": "Choose an appointment time:",
+        "slot_today_tag": "today",
+        "slot_tomorrow_tag": "tomorrow",
+        "no_slots": "Sorry, no slots today or tomorrow. Try again tomorrow morning.",
         "booked_ok": "Appointment confirmed: {label}. You will receive an SMS.",
         "queue_status": "Your position: #{pos}. Show your number when you arrive.",
         "queue_none": "You are not in the queue. Use option 1 to start.",
@@ -89,25 +93,38 @@ def current_triage_session(db: Session, at_session_id: str) -> TriageSession | N
     )
 
 
-def recommended_slots(db: Session, facility_id: int, day: date, limit: int = 3) -> list[Slot]:
-    """Slots zenye expected wait fupi zaidi — inasukuma demand nje ya peak."""
-    slots = booking_service.available_slots(db, facility_id, day)
-    slots.sort(key=forecast.expected_wait_minutes)
-    return slots[:limit]
+def recommended_slots(db: Session, facility_id: int, limit: int = 3) -> list[Slot]:
+    """Slots bora za LEO, na KESHO kama leo imejaa/zimepita.
+
+    Kila slot ina _booking_date ili mtiririko ujue ni siku gani — inazuia
+    mgonjwa kubook slot ya leo iliyopita au ku-confuse na ya kesho.
+    """
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+
+    for day in (today, tomorrow):
+        slots = booking_service.available_slots(db, facility_id, day)
+        if slots:
+            slots.sort(key=forecast.expected_wait_minutes)
+            for slot in slots:
+                slot._booking_date = day  # noqa: SLF001 — context ya mtiririko
+            return slots[:limit]
+    return []
 
 
-def slot_label(slot: Slot) -> str:
+def slot_label(slot: Slot, lang: str = "sw") -> str:
     wait = slot.expected_wait_minutes or forecast.expected_wait_minutes(slot)
-    return f"leo {slot.start_time.strftime('%H:%M')} (~{wait} min)"
+    day_tag = _t(lang, "slot_tomorrow_tag") if getattr(slot, "_booking_date", None) == date.today() + timedelta(days=1) else _t(lang, "slot_today_tag")
+    return f"{day_tag} {slot.start_time.strftime('%H:%M')} (~{wait} min)"
 
 
 def _render_slot_menu(db: Session, lang: str, facility: Facility) -> str:
-    slots = recommended_slots(db, facility.id, date.today())
+    slots = recommended_slots(db, facility.id)
     if not slots:
         return f"END {_t(lang, 'no_slots')}"
     lines = [_t(lang, "slot_header")]
     for idx, slot in enumerate(slots, start=1):
-        lines.append(f"{idx}. {slot_label(slot)}")
+        lines.append(f"{idx}. {slot_label(slot, lang)}")
     return "CON " + "\n".join(lines)
 
 
@@ -126,7 +143,7 @@ def _book_chosen_slot(
     except (ValueError, IndexError):
         return f"CON {_t(lang, 'invalid')}\n" + _render_slot_menu(db, lang, facility).removeprefix("CON ")
 
-    forecast.update_slot_forecasts(db, facility.id, date.today())
+    forecast.update_slot_forecasts(db, facility.id, getattr(slot, "_booking_date", date.today()))
     db.refresh(slot)
     try:
         appointment = booking_service.book_slot(
@@ -141,7 +158,7 @@ def _book_chosen_slot(
             session_row.outcome = "slot_booked"
             db.commit()
 
-    label = slot_label(slot)
+    label = slot_label(slot, lang)
     notify_booking_confirmed(patient.phone_number, label, facility.name)
     return f"END {_t(lang, 'booked_ok', label=label)}"
 
@@ -196,7 +213,7 @@ def _handle_triage_answer(
             priority=queue_service.urgency_priority(UrgencyLevel.URGENT),
         )
         pos = queue_service.position_of(db, entry)
-        return f"END {_t(lang, 'urgent_queued', pos=pos, facility=facility.name)}"
+        return f"END {triage_service.message_for_urgency(urgency, facility.name, queue_pos=pos)}"
 
     # SELF_CARE
     return f"END {triage_service.message_for_urgency(urgency)}"
@@ -251,7 +268,7 @@ def _route(db: Session, session_id: str, phone_number: str, levels: list[str]) -
         # Kama maswali yote yamejibiwa → jibu hili ni slot choice (ROUTINE flow)
         if len(session_row.answers or {}) >= len(triage_service.TRIAGE_QUESTIONS):
             patient = get_or_create_patient(db, phone_number)
-            slots = recommended_slots(db, facility.id, date.today())
+            slots = recommended_slots(db, facility.id)
             return _book_chosen_slot(
                 db, lang, facility, patient, levels[-1], session_row.id, slots
             )
@@ -261,7 +278,7 @@ def _route(db: Session, session_id: str, phone_number: str, levels: list[str]) -
         if len(levels) == 2:
             return _render_slot_menu(db, lang, facility)
         patient = get_or_create_patient(db, phone_number)
-        slots = recommended_slots(db, facility.id, date.today())
+        slots = recommended_slots(db, facility.id)
         return _book_chosen_slot(db, lang, facility, patient, levels[2], None, slots)
 
     if choice == "3":  # nafasi kwenye foleni

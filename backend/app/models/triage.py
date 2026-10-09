@@ -26,7 +26,10 @@ class TriageSession(Base):
     urgency: Mapped[str] = mapped_column(String(20))  # UrgencyLevel.value
     confidence: Mapped[float | None] = mapped_column(Float)
     model_version: Mapped[str | None] = mapped_column(String(50), default="rules-v1")
-    outcome: Mapped[str | None] = mapped_column(String(50))  # emergency_directed|slot_booked|self_care_given|abandoned
+    outcome: Mapped[str | None] = mapped_column(String(50))  # emergency_directed|walk_in_directed|slot_booked|self_care_given|abandoned
+    # Feedback loop: hali ya mwisho aliyoiweka mhadhiri/clinician baada ya kuona
+    # mgonjwa. Inatumika kupima usahihi wa triage na (baadaye) kufundisha model.
+    clinician_urgency: Mapped[str | None] = mapped_column(String(20))  # UrgencyLevel.value
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     patient = relationship("Patient", back_populates="triage_sessions")

@@ -1,5 +1,6 @@
 // App ya Mgonjwa (client) — tofauti na dashibodi ya admin.
-// Tabs: Nafasi Yangu (queue kwa namba ya simu) · Miadi (book slot) · USSD (simulator)
+// Kurasa 3 huru zenye utengano: Nafasi Yangu · Miadi · USSD
+// Nav ya chini (mtindo wa app ya simu) — kila huduma page yake, bila routing ya URL.
 import { useCallback, useEffect, useState } from "react";
 import MyQueue from "./MyQueue.jsx";
 import Booking from "./Booking.jsx";
@@ -7,8 +8,14 @@ import UssdSim from "./UssdSim.jsx";
 
 const POLL_MS = 10000;
 
+const PAGES = [
+  { id: "queue", label: "Nafasi", icon: "🧍" },
+  { id: "book", label: "Miadi", icon: "📅" },
+  { id: "ussd", label: "USSD", icon: "📲" },
+];
+
 export default function App() {
-  const [tab, setTab] = useState("queue"); // queue | book | ussd
+  const [page, setPage] = useState("queue"); // queue | book | ussd
   const [phone, setPhone] = useState(localStorage.getItem("afya_phone") || "");
   const [error, setError] = useState(null);
 
@@ -28,7 +35,9 @@ export default function App() {
       <header className="papp-head">
         <div>
           <h1>Afya Smart</h1>
-          <p className="papp-sub">App ya Mgonjwa</p>
+          <p className="papp-sub">
+            {PAGES.find((p) => p.id === page)?.label ?? ""} — App ya Mgonjwa
+          </p>
         </div>
       </header>
 
@@ -41,31 +50,29 @@ export default function App() {
         </div>
       )}
 
-      <div className="papp-tabs" role="tablist">
-        {[
-          { id: "queue", label: "🧍 Nafasi Yangu" },
-          { id: "book", label: "📅 Miadi" },
-          { id: "ussd", label: "📲 USSD" },
-        ].map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={tab === t.id}
-            className={`papp-tab${tab === t.id ? " active" : ""}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
       <main className="papp-main">
-        {tab === "queue" && (
+        {page === "queue" && (
           <MyQueue phone={phone} setPhone={setPhone} tick={tick} setError={setError} />
         )}
-        {tab === "book" && <Booking setError={setError} />}
-        {tab === "ussd" && <UssdSim />}
+        {page === "book" && <Booking setError={setError} />}
+        {page === "ussd" && <UssdSim />}
       </main>
+
+      {/* Nav ya chini — kila huduma page yake */}
+      <nav className="papp-nav" role="tablist" aria-label="Kurasa za app">
+        {PAGES.map((p) => (
+          <button
+            key={p.id}
+            role="tab"
+            aria-selected={page === p.id}
+            className={`papp-nav-btn${page === p.id ? " active" : ""}`}
+            onClick={() => setPage(p.id)}
+          >
+            <span className="papp-nav-icon">{p.icon}</span>
+            <span className="papp-nav-label">{p.label}</span>
+          </button>
+        ))}
+      </nav>
 
       <footer className="papp-foot">
         <span>Huduma: *384*37894#</span>

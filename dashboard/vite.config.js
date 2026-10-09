@@ -11,10 +11,7 @@ export default defineConfig({
         target: "http://localhost:8000",
         changeOrigin: true,
       },
-      "/ussd-config": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
-      },
+      // USSD haiitajiki dashibodini — simu ya USSD iko kwenye app ya mgonjwa (/app) na PWA ya mobile (/mobile/)
     },
   },
 });

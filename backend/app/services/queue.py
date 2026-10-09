@@ -1,4 +1,9 @@
-"""Queue service — join, call-next, priority and status transitions."""
+"""Queue service — join, call-next, priority, status transitions na ETA.
+
+ETA ya mgonjwa inatokana na *service time halisi* ya kituo (muda kati ya
+called_at → completed_at ya entries zilizopita) — si makadirio ya kimataifa.
+Ikiwa hakuna data ya kutosha, tunarudi kwenye default (15 dakika).
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -8,6 +13,23 @@ from sqlalchemy.orm import Session
 
 from app.models.scheduling import QueueEntry, QueueStatus
 from app.models.triage import UrgencyLevel
+
+# Priority ramani ya urgency → nafasi kwenye foleni (juu = huduma kwanza).
+URGENCY_PRIORITY: dict[UrgencyLevel, int] = {
+    UrgencyLevel.EMERGENCY: 100,
+    UrgencyLevel.URGENT: 10,
+    UrgencyLevel.ROUTINE: 2,
+    UrgencyLevel.SELF_CARE: 0,
+}
+
+
+def urgency_priority(urgency: UrgencyLevel) -> int:
+    """Ramani ya urgency → priority ya foleni (compat wrapper)."""
+    return URGENCY_PRIORITY[urgency]
+
+# Chini ya entries 3 za kihistoria, makadirio hayana msingi — tumia default.
+MIN_SAMPLES_FOR_ETA = 3
+DEFAULT_SERVICE_MINUTES = 15.0
 
 
 def _now() -> datetime:
@@ -46,31 +68,21 @@ def join_queue(
 
 
 def _default_priority_from_context(db: Session, appointment_id: int | None) -> int:
-    """Priority ya msingi kutokana na appointment (triage urgency inaweza kuwa juu zaidi)."""
+    """Priority ya msingi kutokana na triage urgency ya appointment (kama ipo)."""
     if appointment_id is None:
         return 0
     from app.models.scheduling import Appointment
+    from app.models.triage import TriageSession
 
     appointment = db.get(Appointment, appointment_id)
     if appointment is None:
         return 0
-    # Appointment za triage zenye urgency ya juu zina priority bora
-    from sqlalchemy import case
-
-    urgency_stmt = select(
-        case(
-            (QueueEntry.__table__.c.appointment_id.is_(None), 0),
-            else_=0,
-        )
-    )
-    # Simple: appointments zilizounganishwa na triage session za emergency zina priority 10
-    from app.models.triage import TriageSession
-
     urgency_row = db.execute(
         select(TriageSession.urgency).where(TriageSession.id == appointment.triage_session_id)
     ).scalar_one_or_none()
-    del urgency_stmt  # not needed; kept simple
-    return {"emergency": 10, "urgent": 5}.get(urgency_row or "", 0)
+    return URGENCY_PRIORITY.get(
+        UrgencyLevel(urgency_row) if urgency_row else None, 0
+    )
 
 
 def waiting_entries(db: Session, facility_id: int) -> list[QueueEntry]:
@@ -125,11 +137,45 @@ def position_of(db: Session, entry: QueueEntry) -> int:
     return 0
 
 
-def urgency_priority(UrgencyLevel_urgency: UrgencyLevel) -> int:
-    """Ramani ya urgency → priority ya foleni."""
-    return {
-        UrgencyLevel.EMERGENCY: 100,
-        UrgencyLevel.URGENT: 10,
-        UrgencyLevel.ROUTINE: 2,
-        UrgencyLevel.SELF_CARE: 0,
-    }[UrgencyLevel_urgency]
+def mean_service_minutes(db: Session, facility_id: int, limit: int = 50) -> float:
+    """Wastani wa muda wa huduma (called_at → completed_at) kutoka history.
+
+    Inatumika na ETA; hakuna data ya kutosha → DEFAULT_SERVICE_MINUTES.
+    """
+    stmt = (
+        select(QueueEntry.called_at, QueueEntry.completed_at)
+        .where(
+            QueueEntry.facility_id == facility_id,
+            QueueEntry.called_at.is_not(None),
+            QueueEntry.completed_at.is_not(None),
+            QueueEntry.completed_at > QueueEntry.called_at,
+        )
+        .order_by(QueueEntry.completed_at.desc())
+        .limit(limit)
+    )
+    durations = [
+        (completed - called).total_seconds() / 60.0
+        for called, completed in db.execute(stmt)
+        if completed > called
+    ]
+    if len(durations) < MIN_SAMPLES_FOR_ETA:
+        return DEFAULT_SERVICE_MINUTES
+    # Punguza athari ya outliers (mgonjwa aliyekuwa anapumzika deskini n.k.)
+    durations.sort()
+    trimmed = durations[: max(1, int(len(durations) * 0.9))]
+    return sum(trimmed) / len(trimmed)
+
+
+def estimated_wait_minutes(db: Session, entry: QueueEntry) -> int | None:
+    """ETA ya mgonjwa: (nafasi yake) × (wastani wa muda wa huduma).
+
+    Return None kama si WAITING (hana nafasi kwenye foleni tena).
+    """
+    if entry.status != QueueStatus.WAITING.value:
+        return None
+    pos = position_of(db, entry)
+    if pos <= 0:
+        return None
+    per_patient = mean_service_minutes(db, entry.facility_id)
+    # Aliyeko #1 anasubiri dakika chache tu (huduma inayoendelea), wengine zaidi
+    return max(0, int(round((pos - 1) * per_patient + min(5.0, per_patient * 0.3))))

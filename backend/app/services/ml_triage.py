@@ -1,4 +1,4 @@
-"""ML triage inference — model halisi (ml-v1) juu ya rules engine.
+"""ML triage inference — model halisi (ml-v2) juu ya rules engine.
 
 Model: GradientBoosting iliyofundishwa kwenye dataset ya sintetiki ya WHO IMCI /
 ETAT triage logic (angalia ml/train_triage.py). Wrapper hii inahakikisha:
@@ -7,7 +7,7 @@ ETAT triage logic (angalia ml/train_triage.py). Wrapper hii inahakikisha:
    (kupumua kwa shida, hajiamshi, damu nyingi) zinapanda hadi EMERGENCY hata
    kama model ingesema vinginevyo.
 2. **Uncertainty → rules fallback** — kama model haina uhakika (confidence < 0.5),
-   tunarudi kwenye rules-v1 (deterministic, clinically vetted).
+   tunarudi kwenye rules-v2 (deterministic, clinically vetted).
 3. **Model haipo/wameharibika → rules fallback** — mfumo hauvunjiki.
 """
 from __future__ import annotations
@@ -20,10 +20,20 @@ from app.models.triage import UrgencyLevel
 from app.services.triage import classify_rules as rules_classify
 from app.services.triage import MODEL_VERSION as RULES_VERSION
 
+# Kama rules engine ilipandishwa version (rules-v2) ilhali metadata ya model
+# bado ni ya zamani (ml-v1), tunapandisha version ya model kwa ulingi.
+MODEL_VERSION = "ml-v2"
+
+
+def _effective_version(metadata_version: str | None) -> str:
+    if metadata_version in ("ml-v1", "ml-v2", None):
+        return MODEL_VERSION
+    return metadata_version
+
 logger = logging.getLogger("afyasmart.ml_triage")
 
 # Order lazima iwe sawa na TRAINING FEATURES:
-# [breathing, conscious, bleeding, fever_days, pain_level, risk_group]
+# [breathing, conscious, bleeding, fever_days, pain_level, risk_group] + critical_flags
 _FEATURE_ORDER = ["breathing", "conscious", "bleeding", "fever_days", "pain_level", "risk_group"]
 _LABELS = [UrgencyLevel.EMERGENCY, UrgencyLevel.URGENT, UrgencyLevel.ROUTINE, UrgencyLevel.SELF_CARE]
 
@@ -88,6 +98,11 @@ class _ModelHolder:
 _holder = _ModelHolder()
 
 
+def _has_critical_flags_feature() -> bool:
+    """Kama model ya sasa ina feature ya critical_flags (ml-v2)."""
+    return "critical_flags" in (_holder.metadata.get("features") or [])
+
+
 def get_model_info() -> dict | None:
     """Taarifa za model kwa /health na dashboard (haiwezi crash API)."""
     try:
@@ -103,7 +118,7 @@ def get_model_info() -> dict | None:
     metrics = _holder.metadata.get("metrics", {})
     return {
         "loaded": True,
-        "version": _holder.metadata.get("version", "ml-v1"),
+        "version": _effective_version(_holder.metadata.get("version")),
         "algorithm": _holder.metadata.get("algorithm"),
         "trained_at": _holder.metadata.get("trained_at"),
         "accuracy": metrics.get("accuracy"),
@@ -124,14 +139,22 @@ _FEATURE_DEFAULTS = {
 }
 
 
-def _answers_to_vector(answers: dict) -> list[int]:
-    """{question_key: value} → [int features] kwa order ya training."""
+def _answers_to_vector(answers: dict, include_critical_flags: bool) -> list[int]:
+    """{question_key: value} → [int features] kwa order ya training.
+
+    include_critical_flags: ml-v2 ina feature ya 7 (critical_flags — idadi ya
+    red-flags za vile vile); v1 ilikuwa na features 6 tu. Inachaguliwa kutoka
+    metadata ya model iliyopakiwa.
+    """
     vec = []
     for key in _FEATURE_ORDER:
         value = answers.get(key)
         if value is None:
             value = _FEATURE_DEFAULTS[key]
         vec.append(int(bool(value)) if isinstance(value, bool) else int(value))
+    if include_critical_flags:
+        flags = _critical_flags(vec)
+        vec.append(flags)
     return vec
 
 
@@ -170,7 +193,7 @@ def classify(answers: dict) -> tuple[UrgencyLevel, float, str]:
         urgency, conf = rules_classify(answers)
         return urgency, conf, RULES_VERSION
 
-    features = _answers_to_vector(answers)
+    features = _answers_to_vector(answers, _has_critical_flags_feature())
 
     # --- Fallback: hakuna jibu lolote (safety default ya rules) ---
     if not any(answers.get(k) is not None for k in _FEATURE_ORDER):
@@ -187,13 +210,20 @@ def classify(answers: dict) -> tuple[UrgencyLevel, float, str]:
     pred_idx = int(probs.argmax())
     confidence = float(probs[pred_idx])
 
+    # --- Safety net ya pili (red-flag combos) ---
+    # Kama model ilisema routine/self_care ilhali rules-v2 inaona urgent+,
+    # tunachukua uamuzi wa kliniki (usitumie model kama kisingizio cha kutoona hatari).
+    r_urgency_pre, _r_conf_pre = rules_classify(answers)
+    if _LABELS.index(r_urgency_pre) < pred_idx:
+        return _LABELS.index(r_urgency_pre), r_urgency_pre, RULES_VERSION
+
     pred_idx, urgency, override_reason = _apply_safety_override(pred_idx, features)
     if override_reason:
         logger.info("%s (features=%s)", override_reason, features)
         # Confidence ya uamuzi wa override ni ya kliniki (rules), sio ya model
         # iliyokataa — tunachukua max ya mbili (uwazi kwa mwanajaji/m clinicians).
         r_urgency, r_conf = rules_classify(answers)
-        return urgency, round(max(r_conf, confidence), 3), "ml-v1+safety"
+        return urgency, round(max(r_conf, confidence), 3), f"{MODEL_VERSION}+safety"
 
     # --- Fallback: model haihakiki ---
     if confidence < _CONFIDENCE_FLOOR:
@@ -201,6 +231,6 @@ def classify(answers: dict) -> tuple[UrgencyLevel, float, str]:
         # Chagua uamuzi wa kinaseza kwa usalama (class ya juu zaidi)
         if _LABELS.index(r_urgency) < pred_idx:
             return r_urgency, round(r_conf, 3), RULES_VERSION
-        return urgency, round(confidence, 3), "ml-v1"
+        return urgency, round(confidence, 3), MODEL_VERSION
 
-    return urgency, round(confidence, 3), "ml-v1"
+    return urgency, round(confidence, 3), MODEL_VERSION

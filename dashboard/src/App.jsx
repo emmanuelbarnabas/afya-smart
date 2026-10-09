@@ -3,8 +3,25 @@ import { api } from "./api.js";
 import StatsCards from "./components/StatsCards.jsx";
 import QueuePanel from "./components/QueuePanel.jsx";
 import AnalyticsPanel from "./components/AnalyticsPanel.jsx";
+import RemindersPanel from "./components/RemindersPanel.jsx";
+import {
+  MegaphoneIcon,
+  SirenIcon,
+  XIcon,
+  ChartIcon,
+  BellIcon,
+  AlertTriangleIcon,
+} from "./components/Icons.jsx";
 
 const POLL_MS = 5000;
+
+// USSD iko upande wa client (app ya mgonjwa + PWA ya mobile) — dashibodi inabaki
+// na kazi za front-desk: foleni, analytics, kumbusho.
+const PAGES = [
+  { id: "live", label: "Foleni", Icon: SirenIcon },
+  { id: "analytics", label: "Analytics", Icon: ChartIcon },
+  { id: "reminders", label: "Kumbusho", Icon: BellIcon },
+];
 
 function fmtTicket(id) {
   return String(id).padStart(3, "0");
@@ -20,7 +37,8 @@ export default function App() {
   const [toast, setToast] = useState(null); // ujumbe wa mafanikio
   const [busy, setBusy] = useState(false);
   const [soundOn, setSoundOn] = useState(false); // lazima iwashwe na user (autoplay policy)
-  const [view, setView] = useState("live"); // live | analytics
+  const [page, setPage] = useState("live"); // live | analytics | reminders
+  const [safetyAlert, setSafetyAlert] = useState(null); // under-triage alert
   const toastTimer = useRef(null);
   const prevTopId = useRef(null);
 
@@ -38,12 +56,14 @@ export default function App() {
   const refresh = useCallback(async () => {
     if (!facilityId) return;
     try {
-      const [s, q] = await Promise.all([
+      const [s, q, acc] = await Promise.all([
         api.queueSummary(facilityId),
         api.queue(facilityId),
+        api.triageAccuracy(facilityId),
       ]);
       setSummary(s);
       setQueue(q);
+      setSafetyAlert(acc?.alert ? acc : null);
       setError(null);
 
       // Tangaza mgonjwa mpya aliyeitwa (kama sauti imewashwa)
@@ -94,7 +114,7 @@ export default function App() {
       setCurrent(result.entry);
       prevTopId.current = result.entry.id; // usitangaze mara mbili
       announce(result.entry);
-      showToast(`📣 Tiketi ${fmtTicket(result.entry.id)} imeitwa`);
+      showToast(`Tiketi ${fmtTicket(result.entry.id)} imeitwa`);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -112,7 +132,7 @@ export default function App() {
         is_walk_in: true,
         is_emergency_bypass: true,
       });
-      showToast(`🚨 Dharura imeongezwa — Tiketi ${fmtTicket(entry.id)} (priority ${entry.priority})`);
+      showToast(`Dharura imeongezwa — Tiketi ${fmtTicket(entry.id)} (priority ${entry.priority})`);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -125,9 +145,28 @@ export default function App() {
     setBusy(true);
     try {
       const updated = await api.updateStatus(entryId, status);
-      const labels = { in_consult: "🩺 kikitini", done: "✅ imemaliza", left: "🚪 aliondoka" };
+      const labels = { in_consult: "kikitini", done: "imemaliza", left: "aliondoka" };
       showToast(`Tiketi ${fmtTicket(entryId)}: ${labels[status] ?? status}`);
       if (status === "in_consult") setCurrent(updated);
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleFeedback(entryId, clinicianUrgency) {
+    setBusy(true);
+    try {
+      await api.setClinicianUrgency(entryId, clinicianUrgency);
+      const labels = {
+        emergency: "Dharura",
+        urgent: "Haraka",
+        routine: "Kawaida",
+        self_care: "Nyumbani",
+      };
+      showToast(`Uamuzi wa clinician umerekodiwa: ${labels[clinicianUrgency]}`);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -141,9 +180,14 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <div>
-          <h1>Afya Smart — Admin</h1>
-          <p className="subtitle">Dashibodi ya Kituo — {facility?.name ?? "..."}</p>
+        <div className="header-brand">
+          <span className="brand-mark">A</span>
+          <div>
+            <h1>Afya Smart</h1>
+            <p className="subtitle">
+              Dashibodi ya Kituo — {facility?.name ?? "..."}
+            </p>
+          </div>
         </div>
         <div className="header-actions">
           {facilities.length > 1 && (
@@ -166,17 +210,26 @@ export default function App() {
             title={soundOn ? "Zima sauti ya kutangaza" : "Washa sauti ya kutangaza tiketi"}
             aria-pressed={soundOn}
           >
-            {soundOn ? "🔊 Sauti imewaka" : "🔇 Sauti imezimwa"}
-          </button>
-          <button className="btn btn-danger" onClick={handleEmergency} disabled={busy}>
-            🚨 Dharura (Bypass)
-          </button>
-          <button className="btn btn-primary" onClick={handleCallNext} disabled={busy}>
-            📣 Ita Mgonjwa
+            {soundOn ? "Sauti imewaka" : "Sauti imezimwa"}
           </button>
         </div>
       </header>
 
+      {safetyAlert && (
+        <div className="banner-safety" role="alert">
+          <AlertTriangleIcon size={20} className="banner-icon" />
+          <span>
+            <b>Tahadhari ya usalama:</b> under-triage ni{" "}
+            {Math.round(safetyAlert.undertriage_rate * 100)}% (
+            {safetyAlert.undertriaged}/{safetyAlert.total_reviewed}) — imezidi kikomo cha{" "}
+            {Math.round(safetyAlert.threshold * 100)}%. Kagua maswali ya triage na mfunze
+            upya model.
+          </span>
+          <button className="banner-close" onClick={() => setSafetyAlert(null)} aria-label="Funga">
+            <XIcon size={16} />
+          </button>
+        </div>
+      )}
       {toast && (
         <div className="banner-toast" role="status">
           {toast}
@@ -186,7 +239,7 @@ export default function App() {
         <div className="banner-error" role="alert">
           {error}
           <button className="banner-close" onClick={() => setError(null)} aria-label="Funga">
-            ✕
+            <XIcon size={16} />
           </button>
         </div>
       )}
@@ -201,40 +254,50 @@ export default function App() {
             <span className="now-serving-name">{current.patient_name}</span>
           )}
           <span className="now-serving-meta">
-            {current.is_emergency_bypass ? "🚨 DHARURA" : "Kawaida"} · Priority {current.priority}
+            {current.is_emergency_bypass ? "DHARURA" : "Kawaida"} · Priority{" "}
+            {current.priority}
           </span>
         </div>
       )}
 
-      <div className="view-tabs" role="tablist">
-        {[
-          { id: "live", label: "🔴 Live Queue" },
-          { id: "analytics", label: "📈 Analytics" },
-        ].map((v) => (
+      {/* Utengano wa kurasa — kila kipengele kina page yake */}
+      <nav className="page-nav" role="tablist" aria-label="Kurasa za dashibodi">
+        {PAGES.map(({ id, label, Icon }) => (
           <button
-            key={v.id}
+            key={id}
             role="tab"
-            aria-selected={view === v.id}
-            className={`view-tab${view === v.id ? " active" : ""}`}
-            onClick={() => setView(v.id)}
+            aria-selected={page === id}
+            className={`page-link${page === id ? " active" : ""}`}
+            onClick={() => setPage(id)}
           >
-            {v.label}
+            <Icon size={16} />
+            {label}
           </button>
         ))}
-      </div>
+      </nav>
 
-      <div className="main-grid">
-        <div className="main-col">
-          {view === "live" ? (
-            <>
-              <StatsCards summary={summary} />
-              <QueuePanel queue={queue} onStatus={handleStatus} busy={busy} />
-            </>
-          ) : (
-            <AnalyticsPanel facilityId={facilityId} />
-          )}
-        </div>
-      </div>
+      <main className="page-body">
+        {page === "live" && (
+          <>
+            <StatsCards summary={summary} />
+            <div className="page-actions">
+              <button className="btn btn-danger" onClick={handleEmergency} disabled={busy}>
+                <SirenIcon size={16} />
+                Dharura (Bypass)
+              </button>
+              <button className="btn btn-primary" onClick={handleCallNext} disabled={busy}>
+                <MegaphoneIcon size={16} />
+                Ita Mgonjwa
+              </button>
+            </div>
+            <QueuePanel queue={queue} onStatus={handleStatus} onFeedback={handleFeedback} busy={busy} />
+          </>
+        )}
+
+        {page === "analytics" && <AnalyticsPanel facilityId={facilityId} />}
+
+        {page === "reminders" && <RemindersPanel busy={busy} />}
+      </main>
 
       <footer className="footer">
         <span>Hurejeshwa kila {POLL_MS / 1000} sekunde</span>

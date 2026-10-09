@@ -1,6 +1,6 @@
 {
-  "version": "ml-v1",
-  "trained_at": "2026-09-24T09:15:04.696838+00:00",
+  "version": "ml-v2",
+  "trained_at": "2026-09-28T16:48:46.676467+00:00",
   "algorithm": "gradient_boosting",
   "n_samples": 12000,
   "features": [
@@ -9,7 +9,8 @@
     "bleeding",
     "fever_days",
     "pain_level",
-    "risk_group"
+    "risk_group",
+    "critical_flags"
   ],
   "labels": [
     "emergency",
@@ -18,15 +19,15 @@
     "self_care"
   ],
   "metrics": {
-    "accuracy": 0.8938,
-    "f1_macro": 0.8847,
-    "recall_emergency": 0.8806,
-    "cv_accuracy_mean": 0.896,
-    "cv_accuracy_std": 0.0045,
+    "accuracy": 0.8942,
+    "f1_macro": 0.8854,
+    "recall_emergency": 0.8843,
+    "cv_accuracy_mean": 0.8967,
+    "cv_accuracy_std": 0.0038,
     "confusion_matrix": [
       [
-        236,
-        32,
+        237,
+        31,
         0,
         0
       ],
@@ -52,15 +53,15 @@
   },
   "all_results": {
     "gradient_boosting": {
-      "accuracy": 0.8938,
-      "f1_macro": 0.8847,
-      "recall_emergency": 0.8806,
-      "cv_accuracy_mean": 0.896,
-      "cv_accuracy_std": 0.0045,
+      "accuracy": 0.8942,
+      "f1_macro": 0.8854,
+      "recall_emergency": 0.8843,
+      "cv_accuracy_mean": 0.8967,
+      "cv_accuracy_std": 0.0038,
       "confusion_matrix": [
         [
-          236,
-          32,
+          237,
+          31,
           0,
           0
         ],
@@ -85,28 +86,28 @@
       ]
     },
     "logistic_regression": {
-      "accuracy": 0.7746,
-      "f1_macro": 0.7765,
+      "accuracy": 0.7833,
+      "f1_macro": 0.7827,
       "recall_emergency": 0.6343,
-      "cv_accuracy_mean": 0.7835,
-      "cv_accuracy_std": 0.0105,
+      "cv_accuracy_mean": 0.7851,
+      "cv_accuracy_std": 0.0112,
       "confusion_matrix": [
         [
           170,
-          85,
-          13,
+          89,
+          9,
           0
         ],
         [
           25,
-          619,
-          178,
+          641,
+          156,
           27
         ],
         [
           15,
-          130,
-          721,
+          131,
+          720,
           15
         ],
         [
@@ -118,5 +119,5 @@
       ]
     }
   },
-  "data_source": "synthetic \u2014 WHO IMCI / Tanzania ETAT triage logic with clinical noise"
+  "data_source": "synthetic \u2014 WHO IMCI / Tanzania ETAT triage logic (rules-v2 aligned) with clinical noise"
 }

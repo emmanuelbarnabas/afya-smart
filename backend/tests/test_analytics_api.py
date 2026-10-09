@@ -1,16 +1,22 @@
 """Tests za analytics API — demand, forecast, queue summary, triage outcomes."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.models.scheduling import QueueEntry, QueueStatus
 from app.models.triage import TriageSession
 
 
 def test_demand_returns_points(client, facility, patient, db_session):
+    # Tumia tarehe inayohusiana na "sasa" — endpoint inachuja kwa dirisha la
+    # masaa 24*days yaliyopita, hivyo tarehe iliyofatwa hingekwama nje kadiri
+    # siku zinavyopita.
+    joined_at = (datetime.now(timezone.utc) - timedelta(days=2)).replace(
+        hour=7, minute=30, second=0, microsecond=0
+    )
     db_session.add(
         QueueEntry(
             facility_id=facility.id,
             patient_id=patient.id,
-            joined_at=datetime(2026, 9, 22, 7, 30, tzinfo=timezone.utc),
+            joined_at=joined_at,
         )
     )
     db_session.commit()

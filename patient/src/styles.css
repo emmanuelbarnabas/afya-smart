@@ -66,31 +66,47 @@ body {
   cursor: pointer;
 }
 
-/* Tabs */
-.papp-tabs {
+/* Nav ya chini — kila huduma page yake (mtindo wa app ya simu) */
+.papp-nav {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 4px;
+  border-radius: 18px;
+  padding: 6px;
+  box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.06);
 }
 
-.papp-tab {
+.papp-nav-btn {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   border: none;
   background: transparent;
-  padding: 10px 6px;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--muted);
+  padding: 8px 4px;
+  border-radius: 14px;
   cursor: pointer;
 }
 
-.papp-tab.active {
-  background: var(--primary);
-  color: #fff;
+.papp-nav-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.papp-nav-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.papp-nav-btn.active {
+  background: #e8f6ef;
+}
+
+.papp-nav-btn.active .papp-nav-label {
+  color: var(--primary-dark);
 }
 
 /* Cards */
@@ -398,6 +414,52 @@ body {
   opacity: 0.4;
 }
 
+/* Kiungo cha kusakinisha PWA ya mobile (kutoka tab ya USSD) */
+.pinstall {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #e8f6ef;
+  border: 1px solid var(--primary);
+  border-radius: 14px;
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.1s ease;
+}
+
+.pinstall:active {
+  transform: scale(0.98);
+}
+
+.pinstall-icon {
+  font-size: 1.4rem;
+}
+
+.pinstall-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pinstall-text b {
+  font-size: 0.85rem;
+  color: var(--primary-dark);
+}
+
+.pinstall-text small {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.pinstall-arrow {
+  font-size: 1.1rem;
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
 /* Footer */
 .papp-foot {
   display: flex;
@@ -406,4 +468,10 @@ body {
   font-size: 0.72rem;
   border-top: 1px solid var(--border);
   padding-top: 10px;
+}
+
+.pstatus-eta {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: normal;
 }

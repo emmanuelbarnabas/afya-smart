@@ -73,20 +73,24 @@ def patient(db_session, facility):
 
 @pytest.fixture()
 def slots_today(db_session, facility):
-    """Slots za leo: asubuhi (peak) na mchana."""
+    """Slots (8:00–14:00) za siku IJAYO ikiwa leo imepita saa 7:30.
+
+    Booking haiwezi tena kupita slot iliyopita — hivyo tests zinatumia
+    slots za siku ambazo bado hazijafika (uhalisia wa mfumo halisi).
+    """
     from datetime import date, datetime, time, timedelta
 
     from app.models.scheduling import Slot
 
-    today = date.today()
+    now = datetime.now()
+    day = now.date() if now.hour < 7 else now.date() + timedelta(days=1)
     slots = []
-    t = datetime.combine(today, time(8, 0))
     for start in (time(8, 0), time(8, 30), time(9, 0), time(12, 0), time(14, 0)):
-        t = datetime.combine(today, start)
+        t = datetime.combine(day, start)
         slots.append(
             Slot(
                 facility_id=facility.id,
-                date=today,
+                date=day,
                 start_time=start,
                 end_time=(t + timedelta(minutes=30)).time(),
                 capacity=2,

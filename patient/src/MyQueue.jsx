@@ -63,7 +63,12 @@ export default function MyQueue({ phone, setPhone, tick, setError }) {
           </span>
           <span className="pstatus-text">{status.text}</span>
           {data.status === "waiting" && (
-            <span className="pstatus-big">Nafasi #{data.position}</span>
+            <span className="pstatus-big">
+              Nafasi #{data.position}
+              {data.eta_minutes != null && (
+                <span className="pstatus-eta"> · muda ~{data.eta_minutes} dk</span>
+              )}
+            </span>
           )}
           <span className="pstatus-hint">{status.hint}</span>
           {data.status === "waiting" && (

@@ -1,20 +1,30 @@
 // Kadi za takwimu za foleni (kutoka /analytics/queue-summary)
+import {
+  UsersIcon,
+  MegaphoneIcon,
+  StethoscopeIcon,
+  CheckCircleIcon,
+  SirenIcon,
+} from "./Icons.jsx";
+
 export default function StatsCards({ summary }) {
   const cards = [
-    { key: "waiting", label: "Wanasubiri", icon: "🧍", tone: "wait" },
-    { key: "called", label: "Wameitwa", icon: "📣", tone: "called" },
-    { key: "in_consult", label: "Kikitini", icon: "🩺", tone: "consult" },
-    { key: "done_today", label: "Wamekwisha leo", icon: "✅", tone: "done" },
-    { key: "emergency_bypasses_today", label: "Dharura leo", icon: "🚨", tone: "danger" },
+    { key: "waiting", label: "Wanasubiri", Icon: UsersIcon, tone: "wait" },
+    { key: "called", label: "Wameitwa", Icon: MegaphoneIcon, tone: "called" },
+    { key: "in_consult", label: "Kikitini", Icon: StethoscopeIcon, tone: "consult" },
+    { key: "done_today", label: "Wamekwisha leo", Icon: CheckCircleIcon, tone: "done" },
+    { key: "emergency_bypasses_today", label: "Dharura leo", Icon: SirenIcon, tone: "danger" },
   ];
 
   return (
     <section className="stats">
-      {cards.map((c) => (
-        <div key={c.key} className={`card card-${c.tone}`}>
-          <span className="card-icon">{c.icon}</span>
-          <span className="card-value">{summary ? summary[c.key] : "–"}</span>
-          <span className="card-label">{c.label}</span>
+      {cards.map(({ key, label, Icon, tone }) => (
+        <div key={key} className={`card card-${tone}`}>
+          <span className="card-icon">
+            <Icon size={20} />
+          </span>
+          <span className="card-value">{summary ? summary[key] : "–"}</span>
+          <span className="card-label">{label}</span>
         </div>
       ))}
     </section>

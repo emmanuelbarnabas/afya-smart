@@ -1,6 +1,6 @@
 /* Afya Smart dashibodi — mobile-first, rangi za afya (kijani/kibluu) */
 :root {
-  --bg: #f4f7f6;
+  --bg: #eef3f1;
   --surface: #ffffff;
   --text: #1c2b2a;
   --muted: #64716f;
@@ -20,8 +20,14 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg);
   color: var(--text);
+  /* Background ya kina: gradient safi + radial ya kijani + pattern ya mraba */
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(11, 122, 75, 0.14), transparent 60%),
+    radial-gradient(900px 420px at -10% 110%, rgba(36, 113, 163, 0.10), transparent 55%),
+    linear-gradient(180deg, #f2f6f4 0%, #e8efec 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
 .app {
@@ -33,25 +39,146 @@ body {
   gap: 16px;
 }
 
-/* Layout mbili za nguzo: foleni + simu ya USSD */
-.main-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 16px;
-  align-items: start;
+/* Utengano wa kurasa: nav ya kurasa + body moja kwa page */
+.page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.main-col {
+.page-link {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.page-link:hover {
+  color: var(--primary-dark);
+  border-color: var(--primary);
+}
+
+.page-link.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.page-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-width: 0;
 }
 
-@media (max-width: 900px) {
-  .main-grid {
-    grid-template-columns: 1fr;
-  }
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Page ya Kumbusho */
+.reminders-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reminders-head h2 {
+  margin: 0;
+}
+
+.reminders-dry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.reminders-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.reminders-notice {
+  background: #e8f6ef;
+  border: 1px solid var(--primary);
+  color: var(--primary-dark);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.reminders-error {
+  background: #fdecea;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+.reminders-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reminders-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reminders-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  background: var(--surface);
+}
+
+.reminders-when {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 150px;
+}
+
+.reminders-who {
+  flex: 1;
+}
+
+.reminders-who small {
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+.reminders-sent {
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.reminders-pending {
+  color: var(--warn);
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 /* Header */
@@ -61,6 +188,61 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: linear-gradient(145deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 900;
+  box-shadow: 0 6px 16px rgba(8, 92, 57, 0.35);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+/* Ikoni ndani ya vitufe na nav — zilingane na maandishi */
+.page-link,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.panel-title-ico {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-title-ico {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.banner-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .header h1 {
@@ -378,147 +560,6 @@ body {
   color: var(--text);
 }
 
-/* Simu ya bandia ya USSD */
-.ussd-sim {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  position: sticky;
-  top: 12px;
-}
-
-.ussd-sim-head h2 {
-  margin: 0 0 6px;
-  font-size: 1.05rem;
-}
-
-.ussd-phone {
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 10px;
-  font-size: 0.85rem;
-  color: var(--text);
-}
-
-.ussd-phone-frame {
-  background: #1e293b;
-  border-radius: 22px;
-  padding: 12px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-}
-
-.ussd-screen {
-  background: #04140d;
-  border: 1px solid #123326;
-  border-radius: 12px;
-  min-height: 170px;
-  max-height: 220px;
-  overflow-y: auto;
-  padding: 10px;
-  color: #d1fae5;
-  font-family: "Courier New", monospace;
-  font-size: 0.78rem;
-  white-space: pre-wrap;
-  line-height: 1.45;
-  margin-bottom: 10px;
-}
-
-.ussd-status {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.62rem;
-  color: #6b7f78;
-  margin-bottom: 4px;
-}
-
-.ussd-idle {
-  color: #6b7f78;
-  text-align: center;
-  margin-top: 60px;
-}
-
-.ussd-end {
-  color: #fca5a5;
-}
-
-.ussd-keypad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 7px;
-}
-
-.ussd-key {
-  background: #334155;
-  color: #f1f5f9;
-  border: none;
-  border-radius: 50%;
-  width: 52px;
-  height: 52px;
-  margin: 0 auto;
-  font-size: 1.05rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.05s;
-}
-
-.ussd-key:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.ussd-key small {
-  font-size: 0.45rem;
-  letter-spacing: 2px;
-  opacity: 0.5;
-}
-
-.ussd-key:not(:disabled):active {
-  transform: scale(0.93);
-}
-
-.ussd-call {
-  width: 100%;
-  margin-top: 8px;
-  border: none;
-  border-radius: 12px;
-  height: 42px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  background: #10b981;
-  color: #052e1c;
-  cursor: pointer;
-}
-
-.ussd-clear {
-  width: 100%;
-  margin-top: 6px;
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-
-.ussd-clear:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.ussd-session-info {
-  color: var(--muted);
-  font-size: 0.7rem;
-}
-
 /* Analytics panel */
 .analytics-head {
   display: flex;
@@ -696,4 +737,80 @@ body {
     width: 100%;
     margin-left: 0;
   }
+}
+
+.queue-eta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.metric-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--panel, #fff);
+}
+
+.metric-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.metric-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.metric-rows b {
+  color: var(--text, #111);
+}
+
+.metric-sub {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.metric-warn { color: #b45309; }
+.metric-ok { color: #15803d; }
+
+.banner-safety {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.88rem;
+}
+
+.btn-feedback {
+  border: 1px dashed var(--border);
+}
+
+.feedback-options {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.feedback-done {
+  font-size: 0.78rem;
+  color: #15803d;
+  white-space: nowrap;
 }

@@ -1,4 +1,4 @@
-"""Tests za ML triage — model halisi (ml-v1) + safety override + fallback."""
+"""Tests za ML triage — model halisi (ml-v2) + safety override + fallback."""
 from app.models.triage import UrgencyLevel
 from app.services import ml_triage
 from app.services.ml_triage import classify as ml_classify
@@ -21,7 +21,7 @@ def test_model_is_loaded():
     info = ml_triage.get_model_info()
     assert info is not None
     assert info["loaded"] is True
-    assert info["version"] == "ml-v1"
+    assert info["version"] == "ml-v2"
     assert info["algorithm"] == "gradient_boosting"
     assert info["accuracy"] and info["accuracy"] > 0.85
 
@@ -38,7 +38,7 @@ def test_all_critical_is_emergency_with_high_confidence():
     urgency, conf, version = ml_classify(_answers(breathing=True, conscious=False, bleeding=True))
     assert urgency == UrgencyLevel.EMERGENCY
     assert conf >= 0.9
-    assert version.startswith("ml-v1")
+    assert version.startswith("ml-v2")
 
 
 def test_two_critical_is_emergency():
@@ -80,7 +80,7 @@ def test_no_symptoms_is_self_care():
 
 def test_model_version_string():
     _, _, version = ml_classify(_answers())
-    assert version in ("ml-v1", "ml-v1+safety", "rules-v1")
+    assert version in ("ml-v2", "ml-v2+safety", "rules-v2")
 
 
 # ---------------------------------------------------------------- safety override
@@ -88,7 +88,7 @@ def test_safety_override_critical_flags_always_emergency():
     # Hata kama model inge-sema routine, 2+ critical flags → EMERGENCY
     urgency, _, version = ml_classify(_answers(breathing=True, bleeding=True))
     assert urgency == UrgencyLevel.EMERGENCY
-    # Kesi hii model inaiambia emergency yenyewe, kwa hiyo version ni ml-v1
+    # Kesi hii model inaiambia emergency yenyewe, kwa hiyo version ni ml-v2
 
 
 def test_safety_critical_escalation():
@@ -107,7 +107,7 @@ def test_empty_answers_falls_back_to_rules_safety(monkeypatch):
     urgency, conf, version = ml_classify({})
     assert urgency == UrgencyLevel.URGENT
     assert conf < 0.5
-    assert version == "rules-v1"
+    assert version == "rules-v2"
 
 
 def test_classify_full_returns_triple():

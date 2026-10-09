@@ -140,5 +140,5 @@ def test_full_session_persisted_in_db(client, facility, patient, slots_today, db
     assert session_row is not None
     assert session_row.urgency == "self_care"
     assert len(session_row.answers) == 6
-    # ML model halisi (ml-v1) — rules-v1 ni fallback tu
-    assert session_row.model_version in ("ml-v1", "ml-v1+safety", "rules-v1")
+    # ML model halisi (ml-v2) — rules-v2 ni fallback tu
+    assert session_row.model_version in ("ml-v2", "ml-v2+safety", "rules-v2")

@@ -30,7 +30,7 @@ npm run dev
 Thibitisha:
 
 ```bash
-curl http://localhost:8000/api/v1/health          # status: ok + triage_model
+curl http://localhost:8000/api/v1/health          # status: ok + triage_model (ml-v2)
 curl http://localhost:8000/api/v1/facilities      # demo dispensary
 ```
 
@@ -40,12 +40,13 @@ Platforma ni mbili, zinatofautishwa:
 
 | Platform | URL (dev) | Kwa nani |
 |---|---|---|
-| **Admin** (dashibodi ya kituo) | http://localhost:5173 au `:8000/admin` | Front-desk: foleni hai, dharura bypass, ita mgonjwa, analytics |
+| **Admin** (dashibodi ya kituo) | http://localhost:5173 au `:8000/admin` | Front-desk: foleni hai, dharura bypass, ita mgonjwa, analytics, kumbusho — kurasa 3 huru (Foleni · Analytics · Kumbusho) |
 | **Client** (app ya mgonjwa) | `:8000/app` | Mgonjwa: nafasi yangu, miadi, USSD simulator |
+| **Mobile PWA** (USSD app ya simu) | `:8000/mobile/` | App ndogo ya simu: USSD sim tu — "Add to Home Screen" kusakinisha |
 | USSD simulator (ya kale) | http://localhost:8000/ussd-demo | Demo ya callback halisi |
 | API docs (Swagger) | http://localhost:8000/docs | Developers |
 
-Apps mbili zinajengwa tofauti: `cd dashboard && npm run build` (admin) na `cd patient && npm run build` (client). Backend inazihudumia zote mbili.
+Apps mbili zinajengwa tofauti: `cd dashboard && npm run build` (admin) na `cd patient && npm run build` (client). Backend inazihudumia zote mbili. PWA ya mobile inajengwa kwa `cd mobile && npm run build`.
 
 ### Kufungua kwenye SIMU (portalaini)
 
@@ -53,6 +54,9 @@ Apps mbili zinajengwa tofauti: `cd dashboard && npm run build` (admin) na `cd pa
 2. Simu (karibu na PC kwa WiFi au data):
    - **App ya mgonjwa:** `https://<tunnel-url>/app`
    - **Dashibodi ya admin:** `https://<tunnel-url>/admin`
+   - **PWA ya USSD (kusakinisha):** fungua `https://<tunnel-url>/mobile/` → menyu ya
+     browser → **Add to Home Screen** — app inasakinishwa, inafunguka full-screen
+     kama app halisi (manifest + service worker zimepangwa tayari).
 3. USSD *halisi* kwa dial pad: fuata sehemu ya 3 hapa chini.
 
 Mwilikio wa haraka wa USSD (screen ya kwanza):
@@ -90,13 +94,22 @@ curl -X POST http://localhost:8000/api/v1/ussd \
 ## 4. Script ya demo (dakika 5)
 
 1. **Tatizo (30s):** foleni ndefu asubuhi, hakuna mfumo wa kujua dharura kabla ya ufika.
-2. **USSD triage (90s):** piga *384*... kwenye simu → jibu maswali 4–6 → onyesha outcome
-   (*go now / book slot / self-care*). Emphasize: **hakuna smartphone e hitaji la internet.**
+2. **USSD triage (90s):** piga *384*... kwenye simu → jibu maswali 6 → onyesha outcome:
+   EMERGENCY (enda sasa/112), URGENT (nafasi foleni + kipaumbele), ROUTINE (book slot),
+   au SELF-CARE (miongozo ya nyumbani). Emphasize: **hakuna smartphone e hitaji la internet.**
 3. **Smart booking (60s):** routine case inapata slots 3 bora zenye expected wait fupi —
-   demand inasukumwa nje ya peak ya 6–9 AM.
-4. **Dashibodi (90s):** onyesha foleni hai, bonyeza "Dharura (Bypass)" — mgonjwa anaruka
+   demand inasukumwa nje ya peak ya 6–9 AM (kama slots za leo zimejaa → kesho).
+4. **Dashibodi (90s):** kurasa huru kwenye nav ya juu. **🔴 Foleni:** onyesha foleni hai
+   (kila mgonjwa ana ⏱ ETA ya kusubiri), bonyeza "Dharura (Bypass)" — mgonjwa anaruka
    foleni yote (priority 100); kisha "Ita Mgonjwa"; badilisha status kikitini/maliza.
-5. **Analytics (60s):** tab ya Analytics — demand curve, triage outcomes, queue summary.
+   Onyesha "📋 Uamuzi wa clinician" — feedback loop inayopima usahihi wa triage.
+   **📬 Kumbusho:** orodha ya miadi ya masaa 24 + kitufe cha kutuma SMS (dry run inapatikana).
+   **📲 USSD upande wa client:** piga triage kutoka app ya mgonjwa (`/app`) au PWA ya
+   simu (`/mobile/`): mgonjwa anaonekana kwenye foleni hai mara tu anapomaliza maswali
+   (dashibodi iko wazi kando — ona foleni ikijaa mbele ya macho).
+5. **Analytics (60s):** tab ya Analytics → Triage — **wait times** (avg/median/p90 —
+   metric ya #1), **triage accuracy** (under-triage rate karibu na sifuri; ikizidi 15%
+   dashibodi inaonyesha tahadhari ya usalama), triage outcomes, demand curve.
 6. **Mwisho (30s):** success metrics kutoka README §6 — zero missed emergencies,
    flatter demand curve, less time lost for patients.
 

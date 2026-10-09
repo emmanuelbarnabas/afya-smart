@@ -61,6 +61,7 @@ def my_queue(phone: str = Query(..., min_length=6), db: Session = Depends(get_db
             "waiting": waiting,
             "priority": entry.priority,
             "emergency": entry.is_emergency_bypass,
+            "eta_minutes": queue_service.estimated_wait_minutes(db, entry),
         }
 
     # CALLED / IN_CONSULT / DONE / LEFT — onyesha hali tu, nafasi haipo tena

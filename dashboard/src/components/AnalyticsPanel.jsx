@@ -2,6 +2,16 @@
 // Chatu ni SVG safi (hakuna dependencies mpya — chart.js n.k. hazihitajiki).
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
+import {
+  SirenIcon,
+  UsersIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  DoorIcon,
+  ClockIcon,
+  TargetIcon,
+  ChartIcon,
+} from "./Icons.jsx";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -134,22 +144,25 @@ function LineChart({ profile, height = 150 }) {
 /* ---------- Triage outcomes ---------- */
 function TriageOutcomes({ outcomes }) {
   const rows = [
-    { key: "emergency_directed", label: "Elekeza dharura", icon: "🚨", tone: "danger" },
-    { key: "slot_booked", label: "Slot imewekwa", icon: "📅", tone: "info" },
-    { key: "self_care_given", label: "Self-care", icon: "🏠", tone: "ok" },
-    { key: "abandoned", label: "Zilizoachwa", icon: "🚪", tone: "muted" },
+    { key: "emergency_directed", label: "Elekeza dharura", Icon: SirenIcon, tone: "danger" },
+    { key: "walk_in_directed", label: "Foleni + kipaumbele", Icon: UsersIcon, tone: "warn" },
+    { key: "slot_booked", label: "Slot imewekwa", Icon: CalendarIcon, tone: "info" },
+    { key: "self_care_given", label: "Self-care", Icon: CheckCircleIcon, tone: "ok" },
+    { key: "abandoned", label: "Zilizoachwa", Icon: DoorIcon, tone: "muted" },
   ];
   const total = Math.max(1, outcomes.total);
   return (
     <div className="triage-grid">
-      {rows.map((r) => {
-        const n = outcomes[r.key] ?? 0;
+      {rows.map(({ key, label, Icon, tone }) => {
+        const n = outcomes[key] ?? 0;
         const pct = Math.round((n / total) * 100);
         return (
-          <div key={r.key} className={`triage-card triage-${r.tone}`}>
-            <span className="triage-icon">{r.icon}</span>
+          <div key={key} className={`triage-card triage-${tone}`}>
+            <span className="triage-icon">
+              <Icon size={18} />
+            </span>
             <span className="triage-value">{n}</span>
-            <span className="triage-label">{r.label}</span>
+            <span className="triage-label">{label}</span>
             <div className="triage-bar">
               <div className="triage-bar-fill" style={{ width: `${pct}%` }} />
             </div>
@@ -161,12 +174,50 @@ function TriageOutcomes({ outcomes }) {
   );
 }
 
+/* ---------- Success metrics: wait times + triage accuracy ---------- */
+function SuccessMetrics({ waitTimes, accuracy }) {
+  if (!waitTimes && !accuracy) return null;
+  return (
+    <div className="metrics-grid">
+      {waitTimes && (
+        <div className="metric-card">
+          <span className="metric-title metric-title-ico">
+            <ClockIcon size={15} /> Muda wa kusubiri (siku {waitTimes.period_days})
+          </span>
+          <div className="metric-rows">
+            <span>Wastani: <b>{waitTimes.avg_wait_minutes} dk</b></span>
+            <span>Kati: <b>{waitTimes.median_wait_minutes} dk</b></span>
+            <span>P90: <b>{waitTimes.p90_wait_minutes} dk</b></span>
+            <span className="metric-sub">Huduma: ~{waitTimes.avg_service_minutes} dk / mgonjwa ({waitTimes.n_completed})</span>
+          </div>
+        </div>
+      )}
+      {accuracy && accuracy.total_reviewed > 0 && (
+        <div className="metric-card">
+          <span className="metric-title metric-title-ico">
+            <TargetIcon size={15} /> Triage vs clinician
+          </span>
+          <div className="metric-rows">
+            <span>Makubaliano: <b>{Math.round(accuracy.agreement_rate * 100)}%</b> ({accuracy.agrees}/{accuracy.total_reviewed})</span>
+            <span>Under-triage: <b className={accuracy.undertriaged > 0 ? "metric-warn" : "metric-ok"}>
+              {accuracy.undertriaged} ({Math.round(accuracy.undertriage_rate * 100)}%)
+            </b></span>
+            <span className="metric-sub">Under-triage ndiyo kipimo muhimu — lazima ifuate sifuri.</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------- Panel kuu ---------- */
 export default function AnalyticsPanel({ facilityId }) {
   const [tab, setTab] = useState("demand"); // demand | forecast | triage
   const [demand, setDemand] = useState(null);
   const [forecast, setForecast] = useState(null);
   const [outcomes, setOutcomes] = useState(null);
+  const [waitTimes, setWaitTimes] = useState(null);
+  const [accuracy, setAccuracy] = useState(null);
   const [days, setDays] = useState(7);
   const [error, setError] = useState(null);
 
@@ -178,12 +229,16 @@ export default function AnalyticsPanel({ facilityId }) {
       api.demand(facilityId, days),
       api.demandForecast(facilityId),
       api.triageOutcomes(facilityId),
+      api.waitTimes(facilityId, days),
+      api.triageAccuracy(facilityId),
     ])
-      .then(([d, f, o]) => {
+      .then(([d, f, o, w, a]) => {
         if (!alive) return;
         setDemand(d);
         setForecast(f);
         setOutcomes(o);
+        setWaitTimes(w);
+        setAccuracy(a);
       })
       .catch((e) => alive && setError(e.message));
     return () => {
@@ -194,7 +249,9 @@ export default function AnalyticsPanel({ facilityId }) {
   if (error) {
     return (
       <section className="panel analytics">
-        <h2>📈 Analytics</h2>
+        <h2 className="panel-title-ico">
+          <ChartIcon size={18} /> Analytics
+        </h2>
         <p className="empty">Imeshindikana kupakua analytics: {error}</p>
       </section>
       );
@@ -203,7 +260,9 @@ export default function AnalyticsPanel({ facilityId }) {
   return (
     <section className="panel analytics">
       <div className="analytics-head">
-        <h2>📈 Analytics</h2>
+        <h2 className="panel-title-ico">
+          <ChartIcon size={18} /> Analytics
+        </h2>
         <div className="analytics-tabs" role="tablist">
           {[
             { id: "demand", label: "Demand" },
@@ -254,7 +313,14 @@ export default function AnalyticsPanel({ facilityId }) {
       )}
 
       {tab === "triage" && (
-        outcomes ? <TriageOutcomes outcomes={outcomes} /> : <p className="empty">Inapakia…</p>
+        outcomes ? (
+          <>
+            <SuccessMetrics waitTimes={waitTimes} accuracy={accuracy} />
+            <TriageOutcomes outcomes={outcomes} />
+          </>
+        ) : (
+          <p className="empty">Inapakia…</p>
+        )
       )}
 
       {tab === "demand" && demand?.length > 0 && (

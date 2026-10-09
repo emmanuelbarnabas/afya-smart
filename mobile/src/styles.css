@@ -1,0 +1,391 @@
+/* Afya Smart USSD — PWA ya simu (mobile-first, standalone) */
+:root {
+  --bg: #0b7a4b;
+  --bg-dark: #085c39;
+  --surface: #ffffff;
+  --text: #16302c;
+  --muted: #5f716d;
+  --primary: #0b7a4b;
+  --danger: #c0392b;
+  --screen: #04140d;
+  --screen-border: #123326;
+  --key: #f0f4f2;
+  --radius: 18px;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-dark) 100%);
+  color: var(--text);
+}
+
+#root {
+  height: 100%;
+}
+
+.mapp {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + 10px) 16px calc(env(safe-area-inset-bottom) + 10px);
+  gap: 10px;
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+/* Header */
+.mapp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+}
+
+.mapp-logo {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.mapp-head h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.1;
+}
+
+.mapp-head p {
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.mapp-offline {
+  margin-left: auto;
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* Offline badge na SIM button zote mbili zikiwepo — SIM iende mwisho */
+.mapp-offline + .mapp-phone-btn {
+  margin-left: 8px;
+}
+
+.mapp-banner {
+  background: #fdecea;
+  color: var(--danger);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Simu */
+.mphone {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface);
+  border-radius: 26px;
+  padding: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.mphone-notch {
+  align-self: center;
+  width: 84px;
+  height: 5px;
+  border-radius: 999px;
+  background: #dbe4e0;
+}
+
+.mphone-screen {
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+  background: var(--screen);
+  border: 1px solid var(--screen-border);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.mscreen-status {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.62rem;
+  color: #3f6b58;
+  border-bottom: 1px solid var(--screen-border);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.mscreen-text {
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #d9efe4;
+}
+
+.mscreen-end {
+  color: #9fc4b2;
+}
+
+.mscreen-idle {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  color: #7ba28e;
+  font-size: 0.85rem;
+}
+
+.mscreen-idle-icon {
+  font-size: 1.8rem;
+}
+
+/* Keypad */
+.mkeypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.mkey {
+  border: none;
+  background: var(--key);
+  border-radius: 14px;
+  padding: 10px 0 8px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mkey small {
+  font-size: 0.55rem;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+.mkey:disabled {
+  opacity: 0.45;
+}
+
+.mkey:not(:disabled):active {
+  background: #d5e6dd;
+  transform: scale(0.97);
+}
+
+/* Actions */
+.mphone-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mcall {
+  flex: 1;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 16px;
+  padding: 15px;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.mcall:disabled {
+  opacity: 0.55;
+}
+
+.mcall:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.mdel {
+  border: none;
+  background: var(--key);
+  color: var(--muted);
+  border-radius: 16px;
+  width: 64px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.mdel:disabled {
+  opacity: 0.45;
+}
+
+/* Footer */
+.mfoot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.68rem;
+}
+
+.mfoot-link {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 7px 14px;
+  text-decoration: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.mfoot-link:active {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Splash screen */
+.msplash {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-dark) 100%);
+  color: #fff;
+  animation: msplash-in 0.5s ease;
+  cursor: pointer;
+}
+
+.msplash-logo {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 2.4rem;
+  font-weight: 900;
+  animation: msplash-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.msplash h1 {
+  margin: 8px 0 0;
+  font-size: 1.5rem;
+}
+
+.msplash p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+@keyframes msplash-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes msplash-pop {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Kibadilishi cha namba ya simu */
+.mapp-phone-btn {
+  margin-left: auto;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.mapp-phone-btn:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.mphone-editor {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+.mphone-editor label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mphone-editor input {
+  border: 1px solid var(--border, #d8e4e0);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.mphone-editor p {
+  margin: 6px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+/* Simu kubwa kuliko screen — punguza keypad */
+@media (max-height: 700px) {
+  .mkey {
+    padding: 7px 0 6px;
+    font-size: 1.05rem;
+  }
+  .mcall {
+    padding: 12px;
+  }
+}

@@ -44,6 +44,10 @@ class QueueJoinRequest(BaseModel):
     priority: int = 0
 
 
+class ClinicianUrgencyIn(BaseModel):
+    clinician_urgency: str  # UrgencyLevel.value: emergency|urgent|routine|self_care
+
+
 class QueueEntryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -62,6 +66,8 @@ class QueueEntryOut(BaseModel):
     patient_phone: str | None = None
     waited_minutes: int | None = None
     position: int | None = None
+    eta_minutes: int | None = None  # makadirio ya muda wa kusubiri
+    clinician_urgency: str | None = None  # feedback ya clinician (ikiwa imerekodiwa)
 
 
 class CallNextResult(BaseModel):

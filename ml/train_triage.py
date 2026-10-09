@@ -1,9 +1,17 @@
-"""AFYA SMART — ML triage model training.
+"""AFYA SMART — ML triage model training (ml-v2).
 
 Trains a real scikit-learn classifier (GradientBoosting) on a synthetic dataset
 generated from WHO IMCI / Tanzanian ETAT-style triage logic — the same clinical
-rules that power rules-v1, but with realistic patient noise so the model learns
+rules that power rules-v2, but with realistic patient noise so the model learns
 smooth probabilities instead of hard thresholds.
+
+v2 improvements over v1:
+  * critical_flags combo feature — inafanya boundary ya clinical logic kuwa
+    rahisi kwa model kujifunza (v1 ilikuwa na gap kubwa ya accuracy kwenye
+    combos za red-flags).
+  * Red-flag combos za kliniki (homa ndefu + risk group / maumivu makali)
+    zimeongezwa kwenye ground truth — dataset inafanana na rules-v2.
+  * Metadata inabeba feature list ya v2 na recall_emergency kama metric kuu.
 
 Outputs:
     ml/models/triage_model.pkl     (joblib artifact)
@@ -29,10 +37,17 @@ HERE = Path(__file__).resolve().parent
 MODELS_DIR = HERE / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
-FEATURES = ["breathing", "conscious", "breathing", "conscious", "bleeding", "fever_days", "pain_level", "risk_group"]
-
-# Uhakika order ni sawa na TRIAGE_QUESTIONS kwenye backend
-FEATURES = ["breathing", "conscious", "bleeding", "fever_days", "pain_level", "risk_group"]
+# Uhakika order ni sawa na TRIAGE_QUESTIONS kwenye backend:
+# [breathing, conscious, bleeding, fever_days, pain_level, risk_group, critical_flags]
+FEATURES = [
+    "breathing",
+    "conscious",
+    "bleeding",
+    "fever_days",
+    "pain_level",
+    "risk_group",
+    "critical_flags",
+]
 
 LABELS = ["emergency", "urgent", "routine", "self_care"]  # 0,1,2,3
 
@@ -46,7 +61,6 @@ def generate_case() -> tuple[list[int], int]:
     """Generate one synthetic case: (features, label) kutoka clinical logic + noise."""
     breathing = int(rng.random() < 0.10)      # 10% wana shida ya kupumua (1 = hatari)
     # USSD semantics: 1 = amejiamshi vizuri (NZURI), 0 = hajiamshi (HATARI)
-    # 5% hawajiamshi → conscious=0 kwa 5% ya wagonjwa
     conscious = 1 - int(rng.random() < 0.05)
     bleeding = int(rng.random() < 0.08)       # 8% wanatokwa damu nyingi (1 = hatari)
 
@@ -57,7 +71,7 @@ def generate_case() -> tuple[list[int], int]:
     # Kikundi: 0=mzima,1=mjamzito,2=mtoto,3=mzee
     risk_group = int(rng.choice([0, 1, 2, 3], p=[0.55, 0.15, 0.20, 0.10]))
 
-    # ---- Clinical ground-truth logic (WHO IMCI / ETAT inspired, same spirit as rules-v1) ----
+    # ---- Clinical ground-truth logic (WHO IMCI / ETAT inspired = rules-v2) ----
     # Hatari: kupumua kwa shida, HAJIAMSHI (conscious=0), damu nyingi
     critical = (breathing == 1) + (conscious == 0) + (bleeding == 1)
 
@@ -66,7 +80,12 @@ def generate_case() -> tuple[list[int], int]:
     elif critical == 1:
         # dalili moja ya hatari: emergency kama kikundi hatarini, la sivyo urgent
         label = 0 if risk_group >= 1 else 1
-    elif fever_days == 2 or pain_level == 3:
+    # Red-flag combos za v2 (hakuna critical sign, lakini mchanganyiko ni hatari)
+    elif fever_days == 2 and (risk_group >= 1 or pain_level == 3):
+        label = 1  # urgent
+    elif pain_level == 3:
+        label = 1  # urgent
+    elif fever_days == 2:
         label = 1  # urgent
     elif fever_days == 1 and risk_group >= 2:
         label = 1  # urgent
@@ -77,29 +96,26 @@ def generate_case() -> tuple[list[int], int]:
 
     # ---- Noise: wagonjwa halisi hawajibu/kuelekana kikamilifu ----
     # 2% feature noise (misreport)
+    feats = [breathing, conscious, bleeding, fever_days, pain_level, risk_group]
     for idx in range(6):
         if rng.random() < 0.02:
             if idx in (0, 1, 2):
-                features_arr = [breathing, conscious, bleeding]
-                features_arr[idx] = 1 - features_arr[idx]
-                breathing, conscious, bleeding = features_arr
+                feats[idx] = 1 - feats[idx]
             else:
                 delta = int(rng.choice([-1, 1]))
-                val = [fever_days, pain_level, risk_group][idx - 3] + delta
+                val = feats[idx] + delta
                 val = max(0, min(2 if idx == 3 else 3, val))
-                if idx == 3:
-                    fever_days = val
-                elif idx == 4:
-                    pain_level = val
-                else:
-                    risk_group = val
+                feats[idx] = val
+    # (Recompute critical kwa noise ya features — model inaona feats zilizoparaganyika)
+    breathing_n, conscious_n, bleeding_n = feats[0], feats[1], feats[2]
+    critical_noisy = (breathing_n == 1) + (conscious_n == 0) + (bleeding_n == 1)
 
     # 5% label noise: label inayosogezwa class moja juu/chini (mgonjwa/clinician mismatch)
     if rng.random() < 0.05:
         shift = int(rng.choice([-1, 1]))
         label = max(0, min(3, label + shift))
 
-    return [breathing, conscious, bleeding, fever_days, pain_level, risk_group], label
+    return [*feats, critical_noisy], label
 
 
 def main() -> None:
@@ -124,7 +140,8 @@ def main() -> None:
     }
 
     results = {}
-    best_name, best_model, best_recall_emergency = None, None, -1.0
+    best_name, best_model = None, None
+    best_score = (-1.0, -1.0)  # (recall_emergency, accuracy) — recall kwanza
 
     for name, model in models.items():
         model.fit(X_train, y_train)
@@ -146,21 +163,23 @@ def main() -> None:
             "confusion_matrix": confusion_matrix(y_test, y_pred).tolist(),
         }
 
-        # Tunachukua model yenye recall ya emergency bora (zero missed emergencies)
-        if rec_emergency > best_recall_emergency:
-            best_name, best_model, best_recall_emergency = name, model, rec_emergency
+        # Tunachukua model yenye recall ya emergency bora (zero missed emergencies);
+        # tie → accuracy
+        score = (results[name]["recall_emergency"], results[name]["accuracy"])
+        if score > best_score:
+            best_name, best_model, best_score = name, model, score
 
     print("\n=== MODEL COMPARISON ===")
     for name, r in results.items():
         print(f"{name:20s} acc={r['accuracy']:.3f} f1={r['f1_macro']:.3f} "
               f"recall_emergency={r['recall_emergency']:.3f} cv={r['cv_accuracy_mean']:.3f}±{r['cv_accuracy_std']:.3f}")
 
-    print(f"\nWINNER: {best_name} (recall_emergency={best_recall_emergency:.3f})")
+    print(f"\nWINNER: {best_name} (recall_emergency={best_score[0]:.3f}, acc={best_score[1]:.3f})")
 
     joblib.dump(best_model, MODELS_DIR / "triage_model.pkl")
 
     metadata = {
-        "version": "ml-v1",
+        "version": "ml-v2",
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "algorithm": best_name,
         "n_samples": N_SAMPLES,
@@ -168,7 +187,7 @@ def main() -> None:
         "labels": LABELS,
         "metrics": results[best_name],
         "all_results": results,
-        "data_source": "synthetic — WHO IMCI / Tanzania ETAT triage logic with clinical noise",
+        "data_source": "synthetic — WHO IMCI / Tanzania ETAT triage logic (rules-v2 aligned) with clinical noise",
     }
     (MODELS_DIR / "triage_metadata.json").write_text(json.dumps(metadata, indent=2))
 

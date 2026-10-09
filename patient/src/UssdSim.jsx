@@ -154,6 +154,15 @@ export default function UssdSim() {
           Futa input ◂
         </button>
       </div>
+
+      <a className="pinstall" href="/mobile/">
+        <span className="pinstall-icon">📲</span>
+        <span className="pinstall-text">
+          <b>Sakinisha app ya USSD kwenye simu yako</b>
+          <small>Fungua PWA ya Afya Smart USSD → "Add to Home Screen"</small>
+        </span>
+        <span className="pinstall-arrow">→</span>
+      </a>
     </section>
   );
 }

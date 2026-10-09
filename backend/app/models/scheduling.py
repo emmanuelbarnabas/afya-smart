@@ -61,6 +61,8 @@ class Appointment(Base):
     triage_session_id: Mapped[int | None] = mapped_column(ForeignKey("triage_sessions.id"))
     status: Mapped[str] = mapped_column(String(20), default=AppointmentStatus.BOOKED.value)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    # SMS reminder — imetumwa lini (dedup: tuma mara moja tu)
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     patient = relationship("Patient")
     slot = relationship("Slot", back_populates="appointments")
@@ -80,5 +82,8 @@ class QueueEntry(Base):
     joined_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     called_at: Mapped[datetime | None] = mapped_column(DateTime)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Feedback loop ya clinician: hali aliyoiweka baada ya kuona mgonjwa.
+    # Inaunganisha na triage_sessions.urgency kupitia appointment → triage.
+    clinician_urgency: Mapped[str | None] = mapped_column(String(20))
 
     patient = relationship("Patient")

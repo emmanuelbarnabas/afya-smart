@@ -1,26 +1,31 @@
-"""Static frontends — admin dashboard na patient app (zinajengwa na `npm run build`).
+"""Static frontends — admin dashboard, patient app, na mobile PWA (zinajengwa na `npm run build`).
 
 Admin dashboard (dashboard/dist): inahudumiwa kwenye / na /admin
 Patient app (patient/dist):      inahudumiwa kwenye /app
+Mobile PWA (mobile/dist):        inahudumiwa kwenye /mobile
 
 Vite ya admin inaandika assets kwa njia ya mzizi (/assets/...);
-patient app ina base=/app/ hivyo assets zake ni /app/assets/...
+patient na mobile zina base=/app/ na base=/mobile/ hivyo assets zao ni /app/assets/... na /mobile/assets/...
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from fastapi import APIRouter
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
 router = APIRouter(include_in_schema=False)
 
 _ROOT = Path(__file__).resolve().parents[4]
 _ADMIN_DIST = _ROOT / "dashboard" / "dist"
 _PATIENT_DIST = _ROOT / "patient" / "dist"
+_MOBILE_DIST = _ROOT / "mobile" / "dist"
 
 _NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
 _IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
+
+# Mime types zisizogundulika kwenye mifumo yote
+_MEDIA_OVERRIDES = {".webmanifest": "application/manifest+json"}
 
 
 def _serve_asset(dist: Path, asset_path: str):
@@ -31,7 +36,7 @@ def _serve_asset(dist: Path, asset_path: str):
         return None
     if target.is_file():
         headers = _IMMUTABLE if asset_path.startswith("assets/") else _NO_CACHE
-        return FileResponse(target, headers=headers)
+        return FileResponse(target, headers=headers, media_type=_MEDIA_OVERRIDES.get(target.suffix))
     return None
 
 
@@ -97,3 +102,21 @@ def patient_assets(asset_path: str):
         return resp
     # SPA fallback
     return _serve_index(_PATIENT_DIST, "cd patient && npm run build")
+
+
+# ---- Mobile PWA (mobile/dist) — USSD sim app, inasakinishwa kwenye Home Screen ----
+
+
+@router.get("/mobile", include_in_schema=False)
+def mobile_index_redirect():
+    # Redirect kwenda /mobile/ — SW scope ya default (/mobile/) idhibiti page moja kwa moja
+    return RedirectResponse(url="/mobile/", status_code=307)
+
+
+@router.get("/mobile/{asset_path:path}", include_in_schema=False)
+def mobile_assets(asset_path: str):
+    resp = _serve_asset(_MOBILE_DIST, asset_path)
+    if resp is not None:
+        return resp
+    # SPA fallback
+    return _serve_index(_MOBILE_DIST, "cd mobile && npm run build")
