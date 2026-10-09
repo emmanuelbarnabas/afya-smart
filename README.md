@@ -37,7 +37,18 @@ flags any group that is being treated worse than the rest.
 | `tests/` | Pytest suite. |
 | `afyasmart.db` | SQLite database (created on first run). |
 
-> **No React, no FastAPI, no PostgreSQL.** Python + Flask + SQLite only.
+> **This prototype: no React, no FastAPI, no PostgreSQL** — Python + Flask +
+> SQLite only.
+>
+> **Two apps live in this repo.** The table above describes the **root
+> prototype** (`app.py`): one file, no build step, a five-minute demo. The
+> **`backend/`** folder is the full platform — FastAPI + SQLAlchemy (Postgres
+> or SQLite fallback) + React dashboard, patient app and mobile PWA, SMS
+> reminders, analytics and Alembic migrations. Run it with `./dev.sh` (or
+> `cd backend && uvicorn app.main:app --port 8000`), read `docs/API.md` and
+> `docs/DEMO.md`, test it with `cd backend && python -m pytest` (91 tests).
+> Both apps follow the same USSD flow design but keep their own handlers:
+> `ussd.py` (root prototype) and `backend/app/api/routers/ussd.py` (platform).
 
 ---
 
