@@ -89,8 +89,12 @@ outside the clinic).
 
 Africastalking POSTs form fields `phoneNumber` and `text` to `/ussd` with
 `application/x-www-form-urlencoded`. Each `text` is a chain of answers joined
-with `*`. The reply must start with **"CON "** (keep the session open) or
-**"END "** (close it).
+with `*` — the whole chain is replayed on every request and the handler reads
+the **last** element. The reply must start with **"CON "** (keep the session
+open) or **"END "** (close it).
+
+The first element is the **menu choice**: `1` = register/triage, `2` = show
+queue position, `3` = unregister. The six triage questions follow it.
 
 ```bash
 BASE=http://localhost:5000
@@ -99,53 +103,59 @@ BASE=http://localhost:5000
 curl -X POST "$BASE/ussd" \
   -d "phoneNumber=+255712345678" -d "text="
 
-# 2. Sex: 1 = male, 2 = female
+# 2. Menu choice 1 (register) -> sex question
 curl -X POST "$BASE/ussd" \
   -d "phoneNumber=+255712345678" -d "text=1"
 
-# 3. Fever: 1 = yes, 2 = no
+# 3. Sex: 1 = male, 2 = female -> fever question
 curl -X POST "$BASE/ussd" \
   -d "phoneNumber=+255712345678" -d "text=1*1"
 
-# 4. Age (years): any number
+# 4. Fever: 1 = yes, 2 = no -> age question
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*30"
+  -d "phoneNumber=+255712345678" -d "text=1*1*2"
 
-# 5. Chest pain: 1 = yes, 2 = no
+# 5. Age (years): any number -> chest-pain question
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*30*1"
+  -d "phoneNumber=+255712345678" -d "text=1*1*2*30"
 
-# 6. Breathing difficulty: 1 = yes, 2 = no
+# 6. Chest pain: 1 = yes (immediate RED END), 2 = no -> breathing question
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*30*1*1"
+  -d "phoneNumber=+255712345678" -d "text=1*1*2*30*2"
 
-# 7. Severe bleeding: 1 = yes, 2 = no
+# 7. Breathing difficulty: 1 = yes (immediate RED END), 2 = no
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*30*1*1*2"
+  -d "phoneNumber=+255712345678" -d "text=1*1*2*30*2*2"
 
-# 8. Facility: 1, 2 or 3
+# 8. Severe bleeding: 1 = yes (immediate RED END), 2 = no
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*30*1*1*2*1"
+  -d "phoneNumber=+255712345678" -d "text=1*1*2*30*2*2*2"
+
+# 9. Facility: 1, 2 or 3 -> END with the real queue position
+curl -X POST "$BASE/ussd" \
+  -d "phoneNumber=+255712345678" -d "text=1*1*2*30*2*2*2*1"
 ```
 
-**Red flag → immediate `END` message, no queue slot.** E.g. chest pain:
+**Red flag → immediate `END` message, no queue slot.** Answering chest pain
+`1` ends the session at once (the patient is not asked more questions):
 
 ```bash
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345679" -d "text=1*1*40*1*1*2*2"
+  -d "phoneNumber=+255712345679" -d "text=1*1*2*40*1"
 ```
 
 **Output starts with `END Bahati gracious...` and tells the patient to go to
 the hospital NOW.**
 
-**Invalid input (non-numeric age) does not crash:**
+**Invalid input (non-numeric age) does not crash — the same question is
+repeated:**
 
 ```bash
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345682" -d "text=1*1*abc*2*2*2*2"
+  -d "phoneNumber=+255712345682" -d "text=1*1*2*abc"
 ```
 
-Output: `Jambo, umri uliyotoa haufai sahihi. Nambure karatasi tena.`
+Output: `CON Umri uliyotoa haufai. Andika umri sahihi (mfano 30).`
 
 ---
 
@@ -251,7 +261,10 @@ clinic average**. All demo data is synthetic.
   `triage.py` rules for the prototype).
 - **Hospital integration** — HL7/FHIR feeds for arrival times, bed status.
 - **Webhook retries** — Africa's Talking retries POSTs; `ussd.py` currently
-  replies idempotently by `sessionId`.
+  replies idempotently by remembering the last answer-chain + reply per
+  phone number (a replayed chain returns the cached reply, no duplicate
+  visit). The session store is in-memory — move it to Redis/Postgres before
+  running more than one worker process.
 - **Multi-facility / address** — add a `facility_id` + district to every row
   so the queue can serve several clinics.
 

@@ -134,22 +134,25 @@
       <input id="phone" type="tel" value="+255712345678" />
     </div>
 
-    <div class="simulator">
-      <label for="text">Session history (answers joined with `*`)</label>
-      <textarea id="text" placeholder="Leave empty for a new session..."></textarea>
-      <div class="actions">
-        <button class="test-button" id="send">Send</button>
-        <button class="demo-button" id="demo">Load demo answers</button>
+      <div class="simulator">
+      <label for="text">Session history</label>
+      <div id="chain-display" style="font-size:12px;color:#6b7280;background:#f9fafb;padding:6px;border-radius:4px;border:1px solid #e5e7eb;min-height:32px;">No session yet</div>
+      <div style="margin-top:8px;">
+        <label for="text" style="font-size:13px;color:#374151;">Answer for the current screen</label>
+        <textarea id="text" placeholder="Type your answer (1, 2, 3...)" rows="1" style="width:100%;"></textarea>
       </div>
-      <div class="legend">
-        <span class="con">CON = keep session open</span>
-        <span class="end">END = close session</span>
+      <div class="actions" style="margin-top:8px;">
+        <button class="test-button" id="send">Send</button>
+        <button class="demo-button" id="demo">Start new session</button>
+      </div>
+      <div class="legend" style="margin-top:8px;">
+        <span class="con">CON = keep session open &middot; END = close session</span>
       </div>
     </div>
 
     <div class="screen" id="screen">
       <div class="label">Screen</div>
-      Karibu kwa Afya Smart! (Taarifa inaanza na CON, imeendeshwa na END)
+      Bofya Send ili kuanza (menu itaonekana hapa).
     </div>
 
     <div class="screen" id="raw">
@@ -161,15 +164,41 @@
   </div>
 
   <script>
+    // USSD session state (mirrors the real Africa's Talking session flow).
+    let sessionPhone = document.getElementById("phone").value.trim();
+    let sessionChain = "";   // answers joined with *, e.g. "1*1*30"
+    let sessionActive = true;
+
     const screen = document.getElementById("screen");
     const raw = document.getElementById("raw-body");
     const result = document.getElementById("result");
+    const chainDisplay = document.getElementById("chain-display");
+    const textInput = document.getElementById("text");
 
-    // The simulator POSTs to the SAME /ussd endpoint as Africa's Talking.
+    function updateChainDisplay() {
+      if (sessionChain === "") {
+        chainDisplay.textContent = "No session yet — start a new registration.";
+      } else {
+        const parts = sessionChain.split("*").filter(Boolean);
+        chainDisplay.textContent = `Session chain (${parts.length} answers): ${sessionChain}`;
+      }
+    }
+
+    // POST one accumulated answer-chain to /ussd the way Africa's Talking does.
+    // The handler reads text.split("*") and uses the LAST element, so we
+    // rebuild the full chain on every send (USSD sessions are sequential).
     async function send() {
       const phone = document.getElementById("phone").value.trim();
-      const text = document.getElementById("text").value;
-      const payload = new URLSearchParams({ phoneNumber: phone, text });
+      const text = document.getElementById("text").value.trim();
+
+      let chainToSend = sessionChain;
+      if (text && sessionChain === "") {
+        chainToSend = text;                       // first answer: chain = the answer
+      } else if (text) {
+        chainToSend = sessionChain + "*" + text;  // later answer: append
+      }
+
+      const payload = new URLSearchParams({ phoneNumber: phone, text: chainToSend });
       result.textContent = "Sending...";
 
       const res = await fetch("/ussd", {
@@ -181,7 +210,9 @@
       const body = await res.text();
       raw.textContent = `[HTTP ${res.status}] ${res.headers.get("content-type")}\n${body}`;
 
-      // Render the reply: lines separated by \n become individual screens.
+      // Render the reply as screens.  The handler's reply is ONE of:
+      //   "CON <next question>"   (keep session open)
+      //   "END <final message>"   (close session — e.g. RED patient)
       const lines = body.split("\n");
       let html = "";
       for (const line of lines) {
@@ -194,14 +225,48 @@
         }
       }
       screen.innerHTML = html || '<div class="screen">(no response)</div>';
-      result.textContent = `Got HTTP ${res.status} from /ussd.`;
+
+      // Update session state from the response.
+      if (res.ok) {
+        const firstLine = lines[0] || "";
+        if (firstLine.startsWith("END ")) {
+          // Session closed: RED emergency message, queue position, or a menu
+          // action (2/3) — all replies that end with END.
+          sessionActive = false;
+          sessionChain = "";
+          const emergency = body.includes("dharura");
+          chainDisplay.textContent = emergency
+            ? "Session closed — dharura: mgonjwa afike hospitali SASA."
+            : "Session closed — fimbo imefungwa.";
+          textInput.value = "";
+        } else if (firstLine.startsWith("CON ")) {
+          // Session still open: the next question is the CON line.
+          sessionChain = chainToSend;
+          sessionActive = true;
+          result.textContent = `Got HTTP ${res.status}. Session still open.`;
+        } else {
+          sessionActive = false;
+          chainDisplay.textContent = "Session closed";
+          textInput.value = "";
+        }
+      } else {
+        result.textContent = `Error HTTP ${res.status}: ${body.slice(0, 200)}`;
+      }
+
+      updateChainDisplay();
+      textInput.focus();
     }
 
+    // Reset the simulator and fetch a fresh menu from the server.
     async function demo() {
-      // A full demo session: male, fever, age 30, no chest/chest/blood, facility 1.
-      const answers = ["1", "1", "30", "2", "2", "2", "1"];
-      document.getElementById("text").value = answers.join("*");
-      await send();
+      sessionChain = "";
+      sessionActive = true;
+      updateChainDisplay();
+      textInput.value = "";
+      screen.innerHTML = '<div class="screen">Starting a new session…</div>';
+      raw.textContent = "";
+      result.textContent = "";
+      await send();   // empty chain -> the server sends the menu
     }
 
     document.getElementById("send").addEventListener("click", send);
