@@ -10,6 +10,14 @@ start() {
   pkill -f "cloudflared tunnel" 2>/dev/null || true
   sleep 1
   cd "$ROOT"
+  # cloudflared si sehemu ya git tena (binary ya 40MB) — pakua mara ya kwanza.
+  if [ ! -x ./bin/cloudflared ]; then
+    echo "Inapakua cloudflared..."
+    mkdir -p bin
+    curl -fsSL -o ./bin/cloudflared \
+      https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+    chmod +x ./bin/cloudflared
+  fi
   setsid nohup ./bin/cloudflared tunnel --url http://localhost:8000 \
     > /tmp/afya_tunnel.log 2>&1 < /dev/null &
   echo "Inasubiri URL ya umma..."

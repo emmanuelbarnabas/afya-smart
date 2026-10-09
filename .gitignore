@@ -36,3 +36,6 @@ build/
 
 # Blender scratch (haihusiki na mradi)
 blender-tmp/
+
+# Cloudflared binary (40MB) — inapakuliwa na tunnel.sh mara ya kwanza
+bin/cloudflared
