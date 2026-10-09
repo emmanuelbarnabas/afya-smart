@@ -353,12 +353,17 @@ def create_app() -> Flask:
         overall_avg = sum(durations) / len(durations) if durations else 0.0
         overall_median = _median(durations) if durations else 0.0
 
+        flagged = [g.to_dict() for g in groups if g.flagged]
         return {
             "groups": [g.to_dict() for g in groups],
             "total_completed": len(completed),
             "overall_avg_minutes": round(overall_avg, 1),
             "overall_median_minutes": round(overall_median, 1),
-            "flagged_groups": sum(1 for g in groups if g.flagged),
+            "flagged_groups": len(flagged),
+            # templates/fairness.html iterates `data.flagged` to draw the
+            # flagged-cards, then the charts and the detail table. Without this
+            # key the page threw on `data.flagged.length` and rendered empty.
+            "flagged": flagged,
             "filter": "all",
         }
 
