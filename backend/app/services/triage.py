@@ -23,17 +23,17 @@ from app.models.triage import UrgencyLevel
 TRIAGE_QUESTIONS: list[dict] = [
     {
         "key": "breathing",
-        "prompt": "Je, mgonjwa anashindwa kupumua? 1=Ndiyo 0=Hapana",
+        "prompt": "Je, mgonjwa anapumua kwa shida kupita kawaida? 1=Ndiyo 0=Hapana",
         "options": {"1": True, "0": False},
     },
     {
         "key": "conscious",
-        "prompt": "Je, mgonjwa yu hai na amejiamsha vizuri? 1=Ndiyo 0=Hapana",
+        "prompt": "Je, mgonjwa yuko fahamu (anatambua na anazungumza)? 1=Ndiyo 0=Hapana",
         "options": {"1": True, "0": False},
     },
     {
         "key": "bleeding",
-        "prompt": "Je, kuna damu nyingi inayotokwa? 1=Ndiyo 0=Hapana",
+        "prompt": "Je, kuna sehemu inayotokwa damu nyingi bila kushikwa? 1=Ndiyo 0=Hapana",
         "options": {"1": True, "0": False},
     },
     {
@@ -43,12 +43,12 @@ TRIAGE_QUESTIONS: list[dict] = [
     },
     {
         "key": "pain_level",
-        "prompt": "Maumivu ni ya kiwango gani? 0=Hakuna 1=Kidogo 2=Kati 3=Makali",
+        "prompt": "Maumivu ni ya kiwango gani? 0=Hakuna 1=Kidogo 2=Kati kati 3=Makali",
         "options": {"0": 0, "1": 1, "2": 2, "3": 3},
     },
     {
         "key": "risk_group",
-        "prompt": "Mgonjwa ni nani? 0=Mtu mzima 1=Mjamzito 2=Mtoto(chini ya miaka 5) 3=Mzee(60+)",
+        "prompt": "Mgonjwa ni nani? 0=Mtu mzima 1=Mjamzito 2=Mtoto (chini ya miaka 5) 3=Mzee (miaka 60+)",
         "options": {"0": 0, "1": 1, "2": 2, "3": 3},
     },
 ]

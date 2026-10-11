@@ -142,3 +142,142 @@ def test_full_session_persisted_in_db(client, facility, patient, slots_today, db
     assert len(session_row.answers) == 6
     # ML model halisi (ml-v2) — rules-v2 ni fallback tu
     assert session_row.model_version in ("ml-v2", "ml-v2+safety", "rules-v2")
+
+
+# --------------------------------------------------------------------------- #
+# Menyu mpya: Tafuta hospitali, Mwongozo wa afya, Miadi yangu, Toka
+# --------------------------------------------------------------------------- #
+def test_menu_shows_new_options(client):
+    resp = _post(client, "1")
+    assert "Tafuta hospitali" in resp.text
+    assert "Mwongozo wa afya" in resp.text
+    assert "Angalia miadi yangu" in resp.text
+    assert "0. Toka" in resp.text
+
+
+def test_exit_option(client):
+    resp = _post(client, "1*0", session_id="sess-exit")
+    assert resp.text.startswith("END ")
+    assert "Asante" in resp.text
+
+
+def test_facility_search_region_menu(client, facility):
+    resp = _post(client, "1*4", session_id="sess-fac")
+    assert resp.text.startswith("CON ")
+    assert "CHAGUA ENEO" in resp.text
+    assert "Dar es Salaam" in resp.text
+
+
+def test_facility_search_facility_list(client, facility):
+    resp = _post(client, "1*4*1", session_id="sess-fac")
+    assert resp.text.startswith("CON ")
+    assert "CHAGUA HOSPITALI" in resp.text
+    assert "Test Dispensary" in resp.text
+
+
+def test_facility_info_menu(client, facility):
+    resp = _post(client, "1*4*1*1", session_id="sess-fac")
+    assert resp.text.startswith("CON ")
+    assert "Hali ya foleni" in resp.text
+    assert "Huduma zilizopo" in resp.text
+    assert "Saa za kazi" in resp.text
+    assert "Mawasiliano" in resp.text
+
+
+def test_facility_queue_status(client, facility):
+    resp = _post(client, "1*4*1*1*1", session_id="sess-fac")
+    assert resp.text.startswith("END ")
+    assert "wanaosubiri" in resp.text
+    assert "imesasishwa" in resp.text
+
+
+def test_facility_services(client, facility, db_session):
+    from app.models.facility import Facility
+
+    f = db_session.query(Facility).first()
+    f.services = "Malaria,Watoto"
+    db_session.commit()
+
+    resp = _post(client, "1*4*1*1*2", session_id="sess-fac")
+    assert resp.text.startswith("END ")
+    assert "Malaria" in resp.text
+    assert "Watoto" in resp.text
+
+
+def test_facility_hours(client, facility):
+    resp = _post(client, "1*4*1*1*3", session_id="sess-fac")
+    assert resp.text.startswith("END ")
+    assert "Saa za kazi" in resp.text
+    assert "08:00" in resp.text
+
+
+def test_facility_contact(client, facility, db_session):
+    from app.models.facility import Facility
+
+    f = db_session.query(Facility).first()
+    f.contact = "+255 712 345 678"
+    db_session.commit()
+
+    resp = _post(client, "1*4*1*1*4", session_id="sess-fac")
+    assert resp.text.startswith("END ")
+    assert "+255 712 345 678" in resp.text
+
+
+def test_facility_search_back_navigation(client, facility):
+    # Rudi nyuma kutoka orodha ya vituo → orodha ya mikoa
+    resp = _post(client, "1*4*1*0", session_id="sess-fac")
+    assert resp.text.startswith("CON ")
+    assert "CHAGUA ENEO" in resp.text
+
+
+def test_health_guide_menu(client):
+    resp = _post(client, "1*5", session_id="sess-guide")
+    assert resp.text.startswith("CON ")
+    assert "MWONGOZO WA AFYA" in resp.text
+    assert "Dalili za dharura" in resp.text
+
+
+def test_health_guide_topic(client):
+    resp = _post(client, "1*5*1", session_id="sess-guide")
+    assert resp.text.startswith("END ")
+    assert "DHARURA" in resp.text
+    assert "Kupumua kwa shida" in resp.text
+
+
+def test_health_guide_malaria_topic(client):
+    resp = _post(client, "1*5*2", session_id="sess-guide")
+    assert resp.text.startswith("END ")
+    assert "MALARIA" in resp.text
+
+
+def test_my_appointments_none(client, facility, patient):
+    resp = _post(client, "1*6", session_id="sess-appt")
+    assert resp.text.startswith("END ")
+    assert "Hakuna miadi" in resp.text
+
+
+def test_my_appointments_found(client, facility, patient, slots_today, db_session):
+    from app.models.scheduling import Appointment
+
+    db_session.add(Appointment(patient_id=patient.id, slot_id=slots_today[0].id))
+    db_session.commit()
+
+    resp = _post(client, "1*6", session_id="sess-appt")
+    assert resp.text.startswith("END ")
+    assert "Miadi yako" in resp.text
+    assert "Test Dispensary" in resp.text
+
+
+def test_facilities_api_includes_services_and_contact(client, facility, db_session):
+    from app.models.facility import Facility
+
+    f = db_session.query(Facility).first()
+    f.services = "Malaria"
+    f.contact = "+255 712 345 678"
+    db_session.commit()
+
+    resp = client.get("/api/v1/facilities")
+    assert resp.status_code == 200
+    item = resp.json()[0]
+    assert item["services"] == "Malaria"
+    assert item["contact"] == "+255 712 345 678"

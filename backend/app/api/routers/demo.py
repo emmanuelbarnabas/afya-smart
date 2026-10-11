@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,6 +21,42 @@ _STATIC = Path(__file__).resolve().parents[2] / "static"
 def ussd_demo():
     """Simulator ya USSD — inaita /api/v1/ussd halisi (works via tunnel pia)."""
     return FileResponse(_STATIC / "ussd-demo.html", media_type="text/html")
+
+
+@router.get("/demo", response_class=HTMLResponse, include_in_schema=False)
+def demo_landing():
+    """Ukurasa mmoja wa onyesho — viungo vyote + hatua za demo (rangi ya bluu)."""
+    return FileResponse(_STATIC / "demo.html", media_type="text/html")
+
+
+# Icon za mfumo (PNG halisi zilizotengenezwa na scripts/gen_icons.py)
+_ICON_TYPES = {
+    "icon-512.png": "image/png",
+    "icon-192.png": "image/png",
+    "apple-touch-icon.png": "image/png",
+    "icon-32.png": "image/png",
+}
+
+
+@router.get("/{icon_name}", include_in_schema=False)
+def system_icons(icon_name: str):
+    """Icon za mfumo (favicon, apple-touch, pwa) + picha za onyesho.
+
+    Limezuia route nyingine za mzizi kama /dashboard, /app, /mobile
+    (zilizosajiliwa baada ya router hii) — kwa hivyo jina linapaswa
+    kuwa moja ya taratibu zilizojulikana tu.
+    """
+    if icon_name in _ICON_TYPES:
+        return FileResponse(_STATIC / icon_name, media_type=_ICON_TYPES[icon_name])
+    if icon_name == "favicon.ico":
+        return FileResponse(_STATIC / "icon-32.png", media_type="image/png")
+    # Picha za onyesho (hero, cards) — kwenye static/img/
+    img_dir = _STATIC / "img"
+    if img_dir.is_dir():
+        target = (img_dir / icon_name).resolve()
+        if img_dir.resolve() in target.parents and target.is_file():
+            return FileResponse(target, media_type="image/jpeg")
+    return JSONResponse({"detail": "Not found"}, status_code=404)
 
 
 @router.get("/ussd-config", include_in_schema=False)

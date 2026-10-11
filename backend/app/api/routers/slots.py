@@ -28,6 +28,8 @@ def list_facilities(db: Session = Depends(get_db)):
             "level": f.level,
             "region": f.region,
             "district": f.district,
+            "services": f.services,
+            "contact": f.contact,
             "opens_at": f.opens_at.isoformat() if f.opens_at else None,
             "closes_at": f.closes_at.isoformat() if f.closes_at else None,
         }

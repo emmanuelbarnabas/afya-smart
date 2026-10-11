@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
             # tu kwenye DB mpya; bila hii slots za siku mpya hazitengenezeki).
             from app.core.database import SessionLocal
             from app.models import Facility
-            from app.seed import ensure_demo_facility, generate_today_slots
+            from app.seed import ensure_demo_facility, ensure_extra_facilities, generate_today_slots
 
             seed_db = SessionLocal()
             try:
@@ -43,6 +43,8 @@ async def lifespan(app: FastAPI):
                     # Intake (mgonjwa bila SIM) alihitaji hii — DB ya kale
                     # ilikuwa bila is_anonymous kwa hivyo INSERT ilikuwa inaanguka.
                     "patients": [("is_anonymous", "BOOLEAN NOT NULL DEFAULT 0")],
+                    # USSD "Tafuta hospitali": huduma + mawasiliano ya kituo.
+                    "facilities": [("services", "VARCHAR(500)"), ("contact", "VARCHAR(100)")],
                 }
                 for table, table_columns in auto_columns.items():
                     if table in table_names:
@@ -78,6 +80,7 @@ async def lifespan(app: FastAPI):
                                 )
 
                 facility = ensure_demo_facility(seed_db)
+                ensure_extra_facilities(seed_db)
                 generate_today_slots(seed_db, facility, days=7)
                 seed_db.commit()
             finally:
@@ -111,6 +114,8 @@ app.include_router(slots.router, prefix="/api/v1")
 app.include_router(queue.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(reminders.router, prefix="/api/v1")
-app.include_router(demo.router)
 app.include_router(intake.router)
 app.include_router(dashboard.router)
+# demo router mwishoni — ina route ya "{icon_name}" (favicon/icon) inayo
+#OSHIBA ruti zingine za mzizi kama /dashboard kama ingesajiliwa mapema.
+app.include_router(demo.router)

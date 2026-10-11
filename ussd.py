@@ -7,8 +7,8 @@ will ever touch.  It follows the Africa's Talking USSD protocol:
     * ``text`` is the chain of everything typed so far, joined with ``*``:
         - first request:  ""       -> show the menu
         - then:           "1"      -> menu choice (registration)
-        - later:          "1*1"    -> sex answered, fever question shown
-        - a bad answer:   "1*1*abc" -> stays on the same question
+        - later:          "1*30"    -> age answered, sex question shown
+        - a bad answer:   "1*30*abc" -> stays on the same question
     * Every reply must start with "CON " (keep the session open) or "END "
       (close the session).
 
@@ -154,7 +154,9 @@ def _save(db, phone_number, chain, reply):
 # --------------------------------------------------------------------------- #
 # USSD strings (Kiswahili)
 # --------------------------------------------------------------------------- #
-
+# The wording below follows the way a triage nurse actually opens a
+# consultation in a Tanzanian health centre (ETAT / IMCI order): identify the
+# patient, then screen the danger signs one by one, then take the history.
 # Every reply must start with "CON " (continue) or "END " (close session).
 MENU = (
     "CON CHAGUA HUDUMA:\n"
@@ -163,24 +165,51 @@ MENU = (
     "3. Ondoa usajili wako\n"
 )
 
-QUESTION_SEX = "Jinsia yako: 1=Bwana 2=Bibi\n"
-QUESTION_FEVER = "Je, una homa? 1=Ndiyo 2=Hapana\n"
-QUESTION_AGE = "Umri wako (miaka): kwa mfano 30\n"
-QUESTION_CHEST = "Je, una maumivu ya kifua? 1=Ndiyo 2=Hapana\n"
-QUESTION_BREATH = "Je, una shida ya kupumua? 1=Ndiyo 2=Hapana\n"
-QUESTION_BLEED = "Je, kuna kutokwa damu kwa kiasi? 1=Ndiyo 2=Hapana\n"
+QUESTION_AGE = (
+    "Andika umri wa mgonjwa kwa miaka (mfano 30).\n"
+    "Mtoto ambaye hajafika mwaka 1: andika 0.\n"
+)
+QUESTION_SEX = "Jinsia: 1=Mwanaume 2=Mwanamke\n"
+QUESTION_CONSCIOUS = (
+    "Je, mgonjwa yuko fahamu (anatambua na anazungumza)?\n"
+    "1=Ndiyo 2=Hapana (kudidimia/kuzimia)\n"
+)
+QUESTION_CONVULSION = (
+    "Je, ameshika mshipuko leo (mwili kushika/kupindapinda)?\n"
+    "1=Ndiyo 2=Hapana\n"
+)
+QUESTION_BLEED = (
+    "Je, kuna sehemu inayotokwa damu nyingi bila kushikwa?\n"
+    "1=Ndiyo 2=Hapana\n"
+)
+QUESTION_CHEST = (
+    "Je, kuna maumivu makali ya kifua yanayoanza ghafla?\n"
+    "1=Ndiyo 2=Hapana\n"
+)
+QUESTION_BREATH = (
+    "Je, ana shida ya kupumua (anapumua kwa shida au kwa haraka)?\n"
+    "1=Ndiyo 2=Hapana\n"
+)
+QUESTION_FEVER = "Je, ana homa (mwili wa joto)? 1=Ndiyo 2=Hapana\n"
+QUESTION_FEVER_DAYS = (
+    "Homa imekuwepo kwa siku ngapi? Andika idadi (mfano 3).\n"
+)
 QUESTION_FACILITY = "Ni kituo gani unachotembelea? 1=Msasani 2=Kapoleni 3=Nyingine\n"
 
 # RED (emergency) reply — tells the patient to go to the hospital NOW.  No
 # queue slot is given because the patient must not wait in line.
 RED_MESSAGE = (
-    "END Bahati gracious - hii ni dharura!\n"
-    "Mgonjwa afike kituo cha afya SASA au wodi ya dharura.\n"
-    "Kama hauna uwezo wa kumpeleka, piga 112.\n"
+    "END TAHADHARI - hii ni dharura ya kiafya.\n"
+    "Mgonjwa afike kituo cha afya au wodi ya dharura SASA HIVI.\n"
+    "Kama hauna usafiri, piga 112 (dharura ya taifa).\n"
 )
 
 ERROR_MESSAGE = "Jibu si sahihi. Andika tena.\n"
-INVALID_AGE_MESSAGE = "Umri uliyotoa haufai. Andika umri sahihi (mfano 30).\n"
+INVALID_AGE_MESSAGE = (
+    "Umri uliyotoa haufai. Andika umri kwa miaka (mfano 30).\n"
+    "Mtoto ambaye hajafika mwaka 1: andika 0.\n"
+)
+INVALID_DAYS_MESSAGE = "Jibu si sahihi. Andika idadi ya siku (mfano 3).\n"
 
 SUCCES_NAFASI_MESSAGE = "Nafasi yako kwenye foleni ni #{position}."
 
@@ -190,24 +219,40 @@ SUCCES_NAFASI_MESSAGE = "Nafasi yako kwenye foleni ni #{position}."
 # The registration flow after the menu choice "1".  ``parse`` maps the raw
 # answer string to a typed value, or returns None when the answer is invalid
 # (the patient stays on the same screen and is asked again).
+#
+# Order matters clinically: identity (age, sex) then the ETAT/IMCI danger
+# signs — a patient who reports a danger sign is told to go to the hospital
+# immediately and never has to answer the remaining questions.  The fever
+# duration is asked only when the patient actually has fever (``when``).
 STEPS = [
+    {
+        "key": "age",
+        "prompt": QUESTION_AGE,
+        "parse": lambda raw: (
+            int(raw) if raw.isdigit() and 0 <= int(raw) <= 130 else None
+        ),
+        "invalid_message": INVALID_AGE_MESSAGE,
+    },
     {
         "key": "sex",
         "prompt": QUESTION_SEX,
         "parse": lambda raw: {"1": "male", "2": "female"}.get(raw),
     },
     {
-        "key": "fever",
-        "prompt": QUESTION_FEVER,
+        "key": "loss_of_consciousness",
+        "prompt": QUESTION_CONSCIOUS,
+        # "2 = Hapana" answers the danger question "hajiamshi" -> True.
+        "parse": lambda raw: {"1": False, "2": True}.get(raw),
+    },
+    {
+        "key": "convulsion",
+        "prompt": QUESTION_CONVULSION,
         "parse": lambda raw: {"1": True, "2": False}.get(raw),
     },
     {
-        "key": "age",
-        "prompt": QUESTION_AGE,
-        "parse": lambda raw: (
-            int(raw) if raw.isdigit() and 0 < int(raw) <= 130 else None
-        ),
-        "invalid_message": INVALID_AGE_MESSAGE,
+        "key": "severe_bleeding",
+        "prompt": QUESTION_BLEED,
+        "parse": lambda raw: {"1": True, "2": False}.get(raw),
     },
     {
         "key": "chest_pain",
@@ -220,9 +265,19 @@ STEPS = [
         "parse": lambda raw: {"1": True, "2": False}.get(raw),
     },
     {
-        "key": "severe_bleeding",
-        "prompt": QUESTION_BLEED,
+        "key": "fever",
+        "prompt": QUESTION_FEVER,
         "parse": lambda raw: {"1": True, "2": False}.get(raw),
+    },
+    {
+        "key": "fever_days",
+        "prompt": QUESTION_FEVER_DAYS,
+        # Only asked when the fever answer was "yes" (see ``when`` below).
+        "parse": lambda raw: (
+            int(raw) if raw.isdigit() and 0 <= int(raw) <= 365 else None
+        ),
+        "invalid_message": INVALID_DAYS_MESSAGE,
+        "when": lambda answers: answers.get("fever") is True,
     },
     {
         "key": "facility",
@@ -233,7 +288,14 @@ STEPS = [
 
 # Red flags: an immediate "yes" ends the session with the RED emergency
 # message (the patient is sent straight to the hospital — no more questions).
-RED_FLAG_KEYS = {"chest_pain", "breathing_difficulty", "severe_bleeding"}
+# These are the ETAT/IMCI danger signs plus the two adult emergency screens.
+RED_FLAG_KEYS = {
+    "loss_of_consciousness",
+    "convulsion",
+    "severe_bleeding",
+    "chest_pain",
+    "breathing_difficulty",
+}
 
 # --------------------------------------------------------------------------- #
 # Small "database" helpers (Flask + SQLite)
@@ -404,10 +466,13 @@ def _finish_registration(db, phone_number, answers):
         return already
 
     symptoms = {
+        "loss_of_consciousness": answers.get("loss_of_consciousness", False),
+        "convulsion": answers.get("convulsion", False),
         "chest_pain": answers.get("chest_pain", False),
         "breathing_difficulty": answers.get("breathing_difficulty", False),
         "severe_bleeding": answers.get("severe_bleeding", False),
         "fever": answers.get("fever", False),
+        "fever_days": answers.get("fever_days"),
         "age": answers.get("age"),
     }
     level, reason = triage(symptoms)
@@ -447,6 +512,19 @@ def _finish_registration(db, phone_number, answers):
     )
 
 
+def _step_applies(step, answers):
+    """True when this question should be asked for the answers so far.
+
+    A step may declare ``when`` — a predicate over the answers collected
+    so far (e.g. the fever-duration question is only asked when the patient
+    actually has fever).  Skipped steps are stepped over without consuming
+    an answer from the chain, identically on a live flow and on a cold-start
+    replay, so the chain always lines up.
+    """
+    when = step.get("when")
+    return when is None or when(answers)
+
+
 def _advance_registration(db, phone_number, session, newest_answer):
     """Apply the patient's newest answer to the current question.
 
@@ -463,6 +541,13 @@ def _advance_registration(db, phone_number, session, newest_answer):
 
     session["answers"][step["key"]] = parsed
     session["step"] += 1
+
+    # Skip questions that do not apply (e.g. fever duration when there is
+    # no fever) before deciding what to ask next.
+    while session["step"] <= len(STEPS) and not _step_applies(
+        STEPS[session["step"] - 1], session["answers"]
+    ):
+        session["step"] += 1
 
     # Red flag answered YES → immediate END (README: no queue slot, do not
     # make an emergency patient answer more questions).

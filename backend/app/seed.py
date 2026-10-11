@@ -144,9 +144,22 @@ def ensure_demo_facility(db) -> Facility:
             level="dispensary",
             region="Dar es Salaam",
             district="Ilala",
+            services="Uchunguzi wa awali,Dawa za msingi,Malaria,Watoto",
+            contact="+255 22 218 2000",
         )
         db.add(facility)
         db.flush()
+    else:
+        # DB za kale hazikuwa na services/contact — jaza bila kubadilisha nyingine.
+        changed = False
+        if not facility.services:
+            facility.services = "Uchunguzi wa awali,Dawa za msingi,Malaria,Watoto"
+            changed = True
+        if not facility.contact:
+            facility.contact = "+255 22 218 2000"
+            changed = True
+        if changed:
+            db.flush()
     return facility
 
 
@@ -187,6 +200,66 @@ def generate_today_slots(db, facility: Facility, days: int = 1) -> None:
         db.add_all(new_slots)
 
 
+# Vituo vya mikoa mingine — "Tafuta hospitali" ya USSD inahitaji orodha ya
+# eneo (region) → kituo. Bila hii menyu ya1 hutoka tupu nje ya Dar.
+# Huduma (services) ni comma-separated; contact ni simu ya kituo.
+EXTRA_FACILITIES = [
+    {
+        "name": "Hospitali ya Rufaa ya Dodoma",
+        "code": "DOD-001",
+        "level": "hospital",
+        "region": "Dodoma",
+        "district": "Chamwino",
+        "services": "Dharura,Upasuaji,Watoto,Moyo,Uzazi wa jamii",
+        "contact": "+255 26 2320 100",
+    },
+    {
+        "name": "Zahanati ya Nala",
+        "code": "DOD-002",
+        "level": "dispensary",
+        "region": "Dodoma",
+        "district": "Chamwino",
+        "services": "Uchunguzi wa awali,Dawa za msingi,Chanjo,Malaria",
+        "contact": "+255 713 445 118",
+    },
+    {
+        "name": "Hospitali ya Mkoa wa Morogoro",
+        "code": "MOR-001",
+        "level": "hospital",
+        "region": "Morogoro",
+        "district": "Mjini",
+        "services": "Dharura,Upasuaji,Watoto,Magonjwa ya ndani",
+        "contact": "+255 23 263 4073",
+    },
+    {
+        "name": "Kituo cha Afya Kilakala",
+        "code": "MOR-002",
+        "level": "health_centre",
+        "region": "Morogoro",
+        "district": "Mjini",
+        "services": "Uzazi wa jamii,Watoto,Malaria,Upimaji wa HIV",
+        "contact": "+255 754 902 336",
+    },
+    {
+        "name": "Hospitali ya Singida",
+        "code": "SIN-001",
+        "level": "hospital",
+        "region": "Singida",
+        "district": "Mjini",
+        "services": "Dharura,Upasuaji,Watoto,Magonjwa ya ndani,Uzazi wa jamii",
+        "contact": "+255 26 270 2253",
+    },
+]
+
+
+def ensure_extra_facilities(db) -> None:
+    """Hakikisha vituo vya mikoa mingine vipo (idempotent — haiongezi mara mbili)."""
+    for item in EXTRA_FACILITIES:
+        existing = db.scalar(select(Facility).where(Facility.code == item["code"]))
+        if existing is None:
+            db.add(Facility(**item))
+
+
 def ensure_demo_patient(db) -> None:
     if db.scalar(select(Patient).where(Patient.phone_number == "+255700000001")) is None:
         db.add(Patient(phone_number="+255700000001", full_name="Demo Mgonjwa", preferred_language="sw"))
@@ -216,6 +289,7 @@ def main() -> None:
     db = SessionLocal()
     try:
         facility = ensure_demo_facility(db)
+        ensure_extra_facilities(db)
         generate_today_slots(db, facility, days=7)
         ensure_demo_patient(db)
         ensure_demo_intake_patient(db)

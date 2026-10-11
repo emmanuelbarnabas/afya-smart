@@ -39,3 +39,4 @@ blender-tmp/
 
 # Cloudflared binary (40MB) — inapakuliwa na tunnel.sh mara ya kwanza
 bin/cloudflared
+bin/cloudflared.new

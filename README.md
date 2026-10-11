@@ -105,7 +105,10 @@ the **last** element. The reply must start with **"CON "** (keep the session
 open) or **"END "** (close it).
 
 The first element is the **menu choice**: `1` = register/triage, `2` = show
-queue position, `3` = unregister. The six triage questions follow it.
+queue position, `3` = unregister. The triage questions follow it, in the
+order a triage nurse uses (ETAT/IMCI style): age, sex, the danger signs one
+by one, then fever (with its duration, only when there is fever), then the
+facility.
 
 ```bash
 BASE=http://localhost:5000
@@ -114,59 +117,70 @@ BASE=http://localhost:5000
 curl -X POST "$BASE/ussd" \
   -d "phoneNumber=+255712345678" -d "text="
 
-# 2. Menu choice 1 (register) -> sex question
+# 2. Menu choice 1 (register) -> age question
+#    (0 = a child under one year)
 curl -X POST "$BASE/ussd" \
   -d "phoneNumber=+255712345678" -d "text=1"
 
-# 3. Sex: 1 = male, 2 = female -> fever question
+# 3. Age (years): any number 0-130 -> sex question
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1"
+  -d "phoneNumber=+255712345678" -d "text=1*30"
 
-# 4. Fever: 1 = yes, 2 = no -> age question
+# 4. Sex: 1 = mwanaume, 2 = mwanamke -> fahamu (consciousness) question
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*2"
+  -d "phoneNumber=+255712345678" -d "text=1*30*1"
 
-# 5. Age (years): any number -> chest-pain question
+# 5. Consciousness: 1 = anatambua, 2 = Hapana/kudidimia (immediate RED END)
+#    -> mshipuko (convulsion) question
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*2*30"
+  -d "phoneNumber=+255712345678" -d "text=1*30*1*1"
 
-# 6. Chest pain: 1 = yes (immediate RED END), 2 = no -> breathing question
+# 6. Convulsion today: 1 = yes (immediate RED END), 2 = no -> bleeding question
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*2*30*2"
+  -d "phoneNumber=+255712345678" -d "text=1*30*1*1*2"
 
-# 7. Breathing difficulty: 1 = yes (immediate RED END), 2 = no
+# 7. Uncontrolled bleeding: 1 = yes (immediate RED END), 2 = no -> chest pain
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*2*30*2*2"
+  -d "phoneNumber=+255712345678" -d "text=1*30*1*1*2*2"
 
-# 8. Severe bleeding: 1 = yes (immediate RED END), 2 = no
+# 8. Sudden severe chest pain: 1 = yes (immediate RED END), 2 = no -> breathing
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*2*30*2*2*2"
+  -d "phoneNumber=+255712345678" -d "text=1*30*1*1*2*2*2"
 
-# 9. Facility: 1, 2 or 3 -> END with the real queue position
+# 9. Breathing difficulty: 1 = yes (immediate RED END), 2 = no -> fever
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345678" -d "text=1*1*2*30*2*2*2*1"
+  -d "phoneNumber=+255712345678" -d "text=1*30*1*1*2*2*2*2"
+
+# 10. Fever: 1 = yes -> duration question; 2 = no -> straight to facility
+curl -X POST "$BASE/ussd" \
+  -d "phoneNumber=+255712345678" -d "text=1*30*1*1*2*2*2*2*2"
+
+# 11. Facility: 1, 2 or 3 -> END with the real queue position
+curl -X POST "$BASE/ussd" \
+  -d "phoneNumber=+255712345678" -d "text=1*30*1*1*2*2*2*2*2*1"
 ```
 
-**Red flag → immediate `END` message, no queue slot.** Answering chest pain
-`1` ends the session at once (the patient is not asked more questions):
+**Red flag → immediate `END` message, no queue slot.** Answering "hajiamshi"
+(unconscious) ends the session at once (the patient is not asked more
+questions):
 
 ```bash
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345679" -d "text=1*1*2*40*1"
+  -d "phoneNumber=+255712345679" -d "text=1*40*1*2"
 ```
 
-**Output starts with `END Bahati gracious...` and tells the patient to go to
-the hospital NOW.**
+**Output starts with `END TAHADHARI - hii ni dharura ya kiafya...` and tells
+the patient to go to the hospital NOW (or call 112).**
 
 **Invalid input (non-numeric age) does not crash — the same question is
 repeated:**
 
 ```bash
 curl -X POST "$BASE/ussd" \
-  -d "phoneNumber=+255712345682" -d "text=1*1*2*abc"
+  -d "phoneNumber=+255712345682" -d "text=1*abc"
 ```
 
-Output: `CON Umri uliyotoa haufai. Andika umri sahihi (mfano 30).`
+Output: `CON Umri uliyotoa haufai. Andika umri kwa miaka (mfano 30).`
 
 ---
 
@@ -214,7 +228,7 @@ python app.py
 | Step | What happens |
 |---|---|
 | 1. Nurse opens `/dashboard` | A live queue with a "Call next" button. |
-| 2. Patient USSD-registers | 6 questions, Swahili. |
+| 2. Patient USSD-registers | 10 screens, Swahili (danger signs first). |
 | 3. RED patient | Immediate `END` → "go to hospital NOW", no queue slot. |
 | 4. YELLOW patient | Given a queue number + estimated wait. |
 | 5. GREEN patient | Given a queue number + estimated wait. |
@@ -256,8 +270,8 @@ clinic average**. All demo data is synthetic.
 
 - **No real health data** is ever stored or sent outside the clinic.
 - **SMS/USSD messages never name a disease.** The RED message is
-  `"Hii ni dharura! ... afike kituo cha afya HADI"` — it does not say *what*
-  is wrong.
+  `"TAHADHARI - hii ni dharura ya kiafya... afike kituo cha afya au wodi ya
+  dharura SASA HIVI"` — it does not say *what* is wrong.
 - **Audit trail:** every status change and every level override is logged in
   `audit_log` with who did it, when, and what changed.
 

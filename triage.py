@@ -3,12 +3,18 @@
 Returns a triage ``(level, reason)`` pair using only clear, unambiguous rules:
 
     * **RED** — treat as an emergency right now.
+        - loss of consciousness (unresponsive / cannot answer)
+        - convulsion during the day
         - chest pain
         - breathing difficulty
-        - accident / severe bleeding
+        - uncontrolled bleeding
+        - infant under 1 year with fever (pre-referral: with only the age in
+          years we cannot separate a 2-week-old from a 10-month-old, so the
+          safety-first rule refers every young infant with fever)
 
     * **YELLOW** — should be seen soon (not necessarily an emergency).
-        - fever
+        - fever (the reason records how many days it has lasted; 5+ days is
+          flagged as prolonged fever)
         - age under 5 OR over 65
 
     * **GREEN** — routine.
@@ -54,7 +60,17 @@ def triage(symptoms: dict) -> Tuple[str, str]:
     has_chest_pain = _as_bool(symptoms.get("chest_pain"))
     has_breathing_difficulty = _as_bool(symptoms.get("breathing_difficulty"))
     has_severe_bleeding = _as_bool(symptoms.get("severe_bleeding"))
+    has_loss_of_consciousness = _as_bool(symptoms.get("loss_of_consciousness"))
+    has_convulsion = _as_bool(symptoms.get("convulsion"))
     has_fever = _as_bool(symptoms.get("fever"))
+
+    # How many days the fever has lasted (asked only when there is fever).
+    # A missing/invalid value simply means "unknown" — it never escalates
+    # on its own, it only enriches the reason.
+    try:
+        fever_days = int(symptoms.get("fever_days"))
+    except (TypeError, ValueError):
+        fever_days = None
 
     # Age (integer years). A missing key, None, or a non-numeric value means
     # "we do not know the age" and is treated as NOT a child/elder. 0 means
@@ -75,6 +91,14 @@ def triage(symptoms: dict) -> Tuple[str, str]:
         reason_parts.append("breathing difficulty")
     if has_severe_bleeding:
         reason_parts.append("severe bleeding")
+    if has_loss_of_consciousness:
+        reason_parts.append("unconsciousness")
+    if has_convulsion:
+        reason_parts.append("convulsion")
+    # A baby under one year with fever needs pre-referral (IMCI: young
+    # infants with fever are referred urgently).
+    if has_fever and age != _NO_AGE and age < 1:
+        reason_parts.append("infant with fever")
 
     if reason_parts:
         return "RED", "EMERGENCY - " + ", ".join(reason_parts)
@@ -82,6 +106,9 @@ def triage(symptoms: dict) -> Tuple[str, str]:
     # --- YELLOW: risk groups ---------------------------------------------
     if has_fever:
         reason_parts.append("fever")
+        # Fever that will not go away (5+ days) is its own warning sign.
+        if fever_days is not None and fever_days >= 5:
+            reason_parts.append("prolonged fever (5+ days)")
     if age != _NO_AGE and (age < 5 or age > 65):
         reason_parts.append("age < 5 or > 65")
 

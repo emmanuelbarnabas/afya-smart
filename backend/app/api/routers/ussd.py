@@ -9,7 +9,7 @@ Jibu ni maandishi yaliyoanza na "CON " (endelea) au "END " (maliza).
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import PlainTextResponse
@@ -19,7 +19,13 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.facility import Facility
 from app.models.patient import Patient
-from app.models.scheduling import QueueEntry, QueueStatus, Slot
+from app.models.scheduling import (
+    Appointment,
+    AppointmentStatus,
+    QueueEntry,
+    QueueStatus,
+    Slot,
+)
 from app.models.triage import TriageSession, UrgencyLevel
 from app.services import booking as booking_service
 from app.services import forecast, queue as queue_service
@@ -34,8 +40,78 @@ router = APIRouter(tags=["ussd"])
 STRINGS: dict[str, dict[str, str]] = {
     "sw": {
         "welcome": "Karibu AFYA SMART\n1. Kiswahili\n2. English",
-        "menu": "Chagua huduma:\n1. Kagua dalili zako\n2. Miadi/Ongeza muda\n3. Nafasi yangu kwenye foleni",
+        "menu": (
+            "Chagua huduma:\n"
+            "1. Kagua dalili zako\n"
+            "2. Miadi/Ongeza muda\n"
+            "3. Nafasi yangu kwenye foleni\n"
+            "4. Tafuta hospitali\n"
+            "5. Mwongozo wa afya\n"
+            "6. Angalia miadi yangu\n"
+            "0. Toka"
+        ),
         "invalid": "Jibu si sahihi. Jaribu tena.",
+        "region_header": "CHAGUA ENEO:",
+        "facility_header": "CHAGUA HOSPITALI ({region}):",
+        "facility_menu": (
+            "{name}\n"
+            "1. Hali ya foleni\n"
+            "2. Huduma zilizopo\n"
+            "3. Saa za kazi\n"
+            "4. Mawasiliano\n"
+            "0. Rudi nyuma"
+        ),
+        "queue_now": (
+            "HALI YA FOLENI - {name}\n"
+            "Wagonjwa wanaosubiri: {count}\n"
+            "Muda unaokadiriwa: dakika {low}-{high}\n"
+            "Taarifa imesasishwa: saa {updated}"
+        ),
+        "queue_empty": "Hakuna wagonjwa wanaosubiri sasa hivi.\nTaarifa imesasishwa: saa {updated}",
+        "services_list": "Huduma zinazopatikana ({name}):\n{services}",
+        "services_none": "Hakuna taarifa iliyopatikana.",
+        "hours": "Saa za kazi ({name}):\n{opens} - {closes} kila siku",
+        "contact_info": "Mawasiliano ({name}):\n{contact}",
+        "no_facilities": "Hakuna vituo vya afya vilivyosajiliwa.",
+        "guide_menu": (
+            "MWONGOZO WA AFYA:\n"
+            "1. Dalili za dharura\n"
+            "2. Malaria\n"
+            "3. Uzazi wa jamii\n"
+            "4. UKIMWI (HIV)"
+        ),
+        "guide_danger": (
+            "DALILI ZA DHARURA - fika hospitali SASA:\n"
+            "- Kupumua kwa shida\n"
+            "- Kudidimia/kuzimia\n"
+            "- Mshipuko (mwili kushika)\n"
+            "- Damu nyingi bila kushikwa\n"
+            "- Maumivu makali ya kifua"
+        ),
+        "guide_malaria": (
+            "MALARIA:\n"
+            "- Homa, kihiso, maumivu ya mwili\n"
+            "- Lala kwenye neti ya mbu kila usiku\n"
+            "- Ukiwa na homa, pima mara moja"
+        ),
+        "guide_maternal": (
+            "UZAZI WA JAMII:\n"
+            "- Tembelea kituo cha afya mara 4 wakati wa ujauzito\n"
+            "- Fika mara moja ukiwa na dalili za hatari\n"
+            "- Jifunze na uliza daktari wako"
+        ),
+        "guide_hiv": (
+            "UKIMWI (HIV):\n"
+            "- Vipimo vya bure vya HIV vipo kwenye vituo vya afya\n"
+            "- Tumia kondomu kila mara\n"
+            "- ART ni bure kwa wenye virusi"
+        ),
+        "no_appointment": "Hakuna miadi ijayo kwa namba hii. Tumia menyu ya 2 kubook.",
+        "appointment_found": (
+            "Miadi yako: {day} saa {time}\n"
+            "Kituo: {facility}\n"
+            "Fika dakika 15 kabla."
+        ),
         "slot_header": "Chagua muda wa miadi:",
         "slot_today_tag": "leo",
         "slot_tomorrow_tag": "kesho",
@@ -48,8 +124,78 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "en": {
         "welcome": "Welcome to AFYA SMART\n1. Kiswahili\n2. English",
-        "menu": "Choose a service:\n1. Check your symptoms\n2. Book an appointment\n3. My queue position",
+        "menu": (
+            "Choose a service:\n"
+            "1. Check your symptoms\n"
+            "2. Book an appointment\n"
+            "3. My queue position\n"
+            "4. Find a facility\n"
+            "5. Health guide\n"
+            "6. My appointments\n"
+            "0. Exit"
+        ),
         "invalid": "Invalid input. Try again.",
+        "region_header": "CHOOSE A REGION:",
+        "facility_header": "CHOOSE A FACILITY ({region}):",
+        "facility_menu": (
+            "{name}\n"
+            "1. Queue status\n"
+            "2. Available services\n"
+            "3. Working hours\n"
+            "4. Contact\n"
+            "0. Back"
+        ),
+        "queue_now": (
+            "QUEUE STATUS - {name}\n"
+            "People waiting: {count}\n"
+            "Estimated wait: {low}-{high} minutes\n"
+            "Updated: {updated}"
+        ),
+        "queue_empty": "No one is waiting right now.\nUpdated: {updated}",
+        "services_list": "Available services ({name}):\n{services}",
+        "services_none": "No information available.",
+        "hours": "Working hours ({name}):\n{opens} - {closes} daily",
+        "contact_info": "Contact ({name}):\n{contact}",
+        "no_facilities": "No registered health facilities.",
+        "guide_menu": (
+            "HEALTH GUIDE:\n"
+            "1. Danger signs\n"
+            "2. Malaria\n"
+            "3. Maternal health\n"
+            "4. HIV/AIDS"
+        ),
+        "guide_danger": (
+            "DANGER SIGNS - go to hospital NOW:\n"
+            "- Difficulty breathing\n"
+            "- Unconsciousness\n"
+            "- Convulsions\n"
+            "- Severe bleeding\n"
+            "- Severe chest pain"
+        ),
+        "guide_malaria": (
+            "MALARIA:\n"
+            "- Fever, chills, body aches\n"
+            "- Sleep under a mosquito net every night\n"
+            "- If you have fever, get tested immediately"
+        ),
+        "guide_maternal": (
+            "MATERNAL HEALTH:\n"
+            "- Attend all 4 antenatal visits\n"
+            "- Go to the facility at any danger sign\n"
+            "- Ask your doctor questions"
+        ),
+        "guide_hiv": (
+            "HIV/AIDS:\n"
+            "- Free HIV testing at health facilities\n"
+            "- Always use condoms\n"
+            "- ART is free for people living with HIV"
+        ),
+        "no_appointment": "No upcoming appointment for this number. Use option 2 to book.",
+        "appointment_found": (
+            "Your appointment: {day} at {time}\n"
+            "Facility: {facility}\n"
+            "Arrive 15 minutes early."
+        ),
         "slot_header": "Choose an appointment time:",
         "slot_today_tag": "today",
         "slot_tomorrow_tag": "tomorrow",
@@ -219,6 +365,151 @@ def _handle_triage_answer(
     return f"END {triage_service.message_for_urgency(urgency)}"
 
 
+# ----------------------------------------------------------------------------
+# Menyu mpya: Tafuta hospitali (eneo → kituo → taarifa), Mwongozo wa afya,
+# Angalia miadi yangu, na Toka.
+# ----------------------------------------------------------------------------
+GUIDE_TOPICS = {
+    "1": "guide_danger",
+    "2": "guide_malaria",
+    "3": "guide_maternal",
+    "4": "guide_hiv",
+}
+
+
+def _regions_list(db: Session) -> list[str]:
+    """Mikoa yote yenye vituo, imepangwa kwa alfabeti."""
+    return list(db.scalars(select(Facility.region).distinct().order_by(Facility.region)))
+
+
+def _facilities_in_region(db: Session, region: str) -> list[Facility]:
+    return list(
+        db.scalars(select(Facility).where(Facility.region == region).order_by(Facility.name))
+    )
+
+
+def _facility_queue_summary(db: Session, lang: str, facility: Facility) -> str:
+    """Hali ya foleni ya kituo: idadi + makadirio ya muda + muda wa kusasisha."""
+    count = queue_service.waiting_count(db, facility.id)
+    updated = datetime.now().strftime("%H:%M")
+    if count == 0:
+        return _t(lang, "queue_empty", updated=updated)
+    per_patient = queue_service.mean_service_minutes(db, facility.id)
+    low = max(5, int(count * per_patient * 0.8))
+    high = max(low + 5, int(count * per_patient * 1.3))
+    return _t(lang, "queue_now", name=facility.name, count=count, low=low, high=high, updated=updated)
+
+
+def _handle_facility_search(db: Session, lang: str, elements: list[str]) -> str:
+    """Mtiririko wa "Tafuta hospitali": eneo → kituo → taarifa.
+
+    AT hureplay chain nzima kila request — hivyo tunatembeza element za
+    mwisho (baada ya "1*4") kupitia state machine ndogo: "0"inarudi nyuma
+    hatua moja, jibu batili hubaki kwenye skrini ile ile.
+    """
+    regions = _regions_list(db)
+    if not regions:
+        return f"END {_t(lang, 'no_facilities')}"
+
+    stage = "region"
+    region: str | None = None
+    facility: Facility | None = None
+
+    for el in elements:
+        el = el.strip()
+        if stage == "region":
+            if el == "0":  # Toka
+                return f"END {_t(lang, 'bye')}"
+            idx = int(el) if el.isdigit() else -1
+            if 1 <= idx <= len(regions):
+                region = regions[idx - 1]
+                stage = "facility"
+        elif stage == "facility":
+            if el == "0":  # Rudi nyuma → orodha ya mikoa
+                region = None
+                stage = "region"
+                continue
+            facilities = _facilities_in_region(db, region)
+            idx = int(el) if el.isdigit() else -1
+            if 1 <= idx <= len(facilities):
+                facility = facilities[idx - 1]
+                stage = "info"
+        elif stage == "info":
+            # Taarifa (1-4) huishisha session kwa END; "0" rudi kwenye orodha.
+            if el == "0":
+                facility = None
+                stage = "facility"
+                continue
+            if facility is None:
+                break
+            if el == "1":
+                return f"END {_facility_queue_summary(db, lang, facility)}"
+            if el == "2":
+                services = (facility.services or "").strip() or _t(lang, "services_none")
+                return f"END {_t(lang, 'services_list', name=facility.name, services=services)}"
+            if el == "3":
+                opens = facility.opens_at.strftime("%H:%M") if facility.opens_at else "08:00"
+                closes = facility.closes_at.strftime("%H:%M") if facility.closes_at else "17:00"
+                return f"END {_t(lang, 'hours', name=facility.name, opens=opens, closes=closes)}"
+            if el == "4":
+                contact = (facility.contact or "").strip() or _t(lang, "services_none")
+                return f"END {_t(lang, 'contact_info', name=facility.name, contact=contact)}"
+
+    # Skrini ya sasa (jibu batili au hatua bado haijajibiwa)
+    if stage == "region":
+        lines = [_t(lang, "region_header")]
+        lines += [f"{i}. {r}" for i, r in enumerate(regions, start=1)]
+        lines.append("0. Toka")
+        return "CON " + "\n".join(lines)
+    if stage == "facility" and region is not None:
+        facilities = _facilities_in_region(db, region)
+        lines = [_t(lang, "facility_header", region=region)]
+        lines += [f"{i}. {f.name}" for i, f in enumerate(facilities, start=1)]
+        lines.append("0. Rudi nyuma")
+        return "CON " + "\n".join(lines)
+    if stage == "info" and facility is not None:
+        return "CON " + _t(lang, "facility_menu", name=facility.name)
+    return f"CON {_t(lang, 'invalid')}\n" + _t(lang, "menu")
+
+
+def _handle_health_guide(lang: str, elements: list[str]) -> str:
+    """Mwongozo wa afya: orodha ya mada, kila mada inaishisha kwa END."""
+    if not elements or elements[-1].strip() not in GUIDE_TOPICS:
+        if elements and elements[-1].strip() == "0":
+            return f"END {_t(lang, 'bye')}"
+        return f"CON {_t(lang, 'guide_menu')}"
+    return f"END {_t(lang, GUIDE_TOPICS[elements[-1].strip()])}"
+
+
+def _handle_my_appointments(db: Session, lang: str, phone_number: str) -> str:
+    """Miadi ijayo ya mgonjwa (END — session inaishisha)."""
+    today = date.today()
+    stmt = (
+        select(Appointment, Slot, Facility)
+        .join(Slot, Appointment.slot_id == Slot.id)
+        .join(Facility, Slot.facility_id == Facility.id)
+        .join(Patient, Appointment.patient_id == Patient.id)
+        .where(
+            Patient.phone_number == phone_number,
+            Appointment.status == AppointmentStatus.BOOKED.value,
+            Slot.date >= today,
+        )
+        .order_by(Slot.date, Slot.start_time)
+        .limit(1)
+    )
+    row = db.execute(stmt).first()
+    if row is None:
+        return f"END {_t(lang, 'no_appointment')}"
+    _appointment, slot, facility = row
+    if slot.date == today:
+        day = _t(lang, "slot_today_tag")
+    elif slot.date == today + timedelta(days=1):
+        day = _t(lang, "slot_tomorrow_tag")
+    else:
+        day = slot.date.strftime("%Y-%m-%d")
+    return f"END {_t(lang, 'appointment_found', day=day, time=slot.start_time.strftime('%H:%M'), facility=facility.name)}"
+
+
 def _handle_queue_position(db: Session, lang: str, phone_number: str) -> str:
     patient = get_or_create_patient(db, phone_number)
     entry = db.scalar(
@@ -244,11 +535,25 @@ def _route(db: Session, session_id: str, phone_number: str, levels: list[str]) -
     if len(levels) == 1:
         return _handle_language(levels, db, phone_number)
 
+    choice = levels[1]
+
+    # Chaguo 4/5/6/0 (tafuta hospitali, mwongozo, miadi yangu, toka) hazihitaji
+    # kituo chenye nafasi za miadi — zihakikishe kabla ya ukaguzi wa facility.
+    if choice == "4":  # Tafuta hospitali (eneo → kituo → taarifa)
+        return _handle_facility_search(db, lang, levels[2:])
+
+    if choice == "5":  # Mwongozo wa afya
+        return _handle_health_guide(lang, levels[2:])
+
+    if choice == "6":  # Angalia miadi yangu
+        return _handle_my_appointments(db, lang, phone_number)
+
+    if choice == "0":  # Toka
+        return f"END {_t(lang, 'bye')}"
+
     facility = get_default_facility(db)
     if facility is None:
         return "END Huduma haipatikani kwa sasa. Jaribu tena baadaye."
-
-    choice = levels[1]
 
     if choice == "1":  # triage
         session_row = current_triage_session(db, session_id)

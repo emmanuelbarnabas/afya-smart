@@ -16,6 +16,10 @@ class Facility(Base):
     level: Mapped[str] = mapped_column(String(50), default="dispensary")  # dispensary|health_centre|hospital
     region: Mapped[str] = mapped_column(String(100))
     district: Mapped[str | None] = mapped_column(String(100))
+    # Huduma zinazopatikana (comma-separated) na mawasiliano — zinaonyeshwa
+    # kwenye USSD "Tafuta hospitali" na API ya dashboard.
+    services: Mapped[str | None] = mapped_column(String(500))
+    contact: Mapped[str | None] = mapped_column(String(100))
     opens_at: Mapped[time] = mapped_column(Time, default=time(8, 0))
     closes_at: Mapped[time] = mapped_column(Time, default=time(17, 0))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

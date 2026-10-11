@@ -25,6 +25,15 @@ def base(symptoms=None):
     ({"breathing_difficulty": True}, ("RED", "EMERGENCY - breathing difficulty")),
     # severe bleeding alone -> RED
     ({"severe_bleeding": True}, ("RED", "EMERGENCY - severe bleeding")),
+    # unconsciousness (unresponsive) alone -> RED
+    ({"loss_of_consciousness": True}, ("RED", "EMERGENCY - unconsciousness")),
+    # convulsion during the day alone -> RED
+    ({"convulsion": True}, ("RED", "EMERGENCY - convulsion")),
+    # infant under 1 year (age 0) with fever -> RED (pre-referral)
+    ({"fever": True, "age": 0}, ("RED", "EMERGENCY - infant with fever")),
+    # infant with fever plus another sign -> RED, reason lists both
+    ({"fever": True, "age": 0, "fever_days": 2},
+     ("RED", "EMERGENCY - infant with fever")),
     # all three at once -> still RED, reason lists all of them
     ({"chest_pain": True, "breathing_difficulty": True, "severe_bleeding": True},
      ("RED", "EMERGENCY - chest pain, breathing difficulty, severe bleeding")),
@@ -52,12 +61,17 @@ def test_red_rules(symptoms, expected):
     ({"age": 70}, ("YELLOW", "WATCH - age < 5 or > 65")),
     # both fever and age -> YELLOW, reason lists both
     ({"fever": True, "age": 70}, ("YELLOW", "WATCH - fever, age < 5 or > 65")),
-    # age 0 IS a child (age < 5) in addition to any fever
-    ({"fever": True, "age": 0}, ("YELLOW", "WATCH - fever, age < 5 or > 65")),
+    # fever lasting 5+ days is prolonged fever -> YELLOW reason grows
+    ({"fever": True, "fever_days": 7}, ("YELLOW", "WATCH - fever, prolonged fever (5+ days)")),
+    # a short fever (2 days) stays a plain fever
+    ({"fever": True, "fever_days": 2}, ("YELLOW", "WATCH - fever")),
+    # missing/invalid fever_days never escalates on its own
+    ({"fever": True, "fever_days": None}, ("YELLOW", "WATCH - fever")),
+    ({"fever": True, "fever_days": "unknown"}, ("YELLOW", "WATCH - fever")),
+    # age 0 WITHOUT fever is still just a child -> YELLOW
+    ({"fever": False, "age": 0}, ("YELLOW", "WATCH - age < 5 or > 65")),
     # missing age key behaves like age 0 (no age information)
     ({"fever": True}, ("YELLOW", "WATCH - fever")),
-    # age 0 IS a child (age < 5), so this is YELLOW even with no fever
-    ({"age": 0, "fever": False}, ("YELLOW", "WATCH - age < 5 or > 65")),
 ])
 def test_yellow_rules(symptoms, expected):
     assert triage(base(symptoms)) == expected
