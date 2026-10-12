@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Afya Smart — Technical Report</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Helvetica, Arial, sans-serif; color: #1e293b; font-size: 10.5pt; line-height: 1.55; margin: 0; }
+  h1 { font-size: 22pt; color: #1d4ed8; margin: 0 0 2px; }
+  .sub { color: #475569; font-size: 11pt; margin: 0 0 14px; }
+  .meta { background: #eef2ff; border-left: 4px solid #3b82f6; padding: 8px 12px; font-size: 9.5pt; color: #334155; margin-bottom: 16px; }
+  h2 { font-size: 13.5pt; color: #1d4ed8; margin: 18px 0 6px; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; }
+  h3 { font-size: 11pt; color: #334155; margin: 12px 0 4px; }
+  p { margin: 5px 0; }
+  ul { margin: 4px 0 8px; padding-left: 20px; }
+  li { margin: 2px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; font-size: 9.5pt; }
+  th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #eef2ff; color: #1d4ed8; }
+  code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-size: 9pt; }
+  .banner { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 8px 12px; border-radius: 6px; font-size: 9.5pt; margin: 10px 0 14px; }
+  .footer { margin-top: 20px; font-size: 9pt; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>Afya Smart — Technical Report</h1>
+<p class="sub">AI-powered triage &amp; queue management for fairer, faster public healthcare</p>
+<div class="meta">
+  <b>Competition:</b> RIDC PT Innovation Hackathon 2026 · Category: Software (Web &amp; Mobile)<br>
+  <b>Author:</b> Emmanuel Stephen Barnabas · <b>Repository:</b> github.com/emmanuelbarnabas/afya-smart<br>
+  <b>Stack:</b> Python (FastAPI), SQLAlchemy, Alembic, SQLite/PostgreSQL, scikit-learn gradient boosting (joblib), Africa's Talking (USSD + SMS), React dashboard + vanilla-JS PWA, Cloudflare tunnel<br>
+  <b>Status:</b> Working end-to-end prototype · 107 automated tests passing
+</div>
+
+<div class="banner"><b>Prototype notice.</b> This is a hackathon prototype and is <b>not for real clinical use</b>. The triage rules and model must be reviewed and signed off by medical professionals before any real patient is triaged by this software. This warning is repeated inside the USSD menus and the nurse dashboard.</div>
+
+<h2>1. Problem &amp; approach</h2>
+<p>Public clinics in Tanzania face long, opaque queues and no triage before arrival: a stroke case and a prescription refill wait in the same line. Existing digital-health tools assume smartphones and data bundles, excluding the majority of patients who use 2G feature phones. Waits also vary systematically by sex, age and patient type — unmeasured, therefore unfixed.</p>
+<p>Afya Smart moves triage and booking <i>before</i> the visit, on the channel everyone already has: USSD. A patient dials <code>*384#</code>, answers a short symptom interview in Kiswahili or English, receives a RED / YELLOW / GREEN urgency level with a reason, and books the first free slot at a chosen facility. The nurse sees one live queue per facility; a fairness report makes wait disparities visible.</p>
+
+<h2>2. System architecture</h2>
+<p>A single FastAPI service exposes a versioned JSON API (<code>/api/v1</code>), serves the static web front-ends (nurse dashboard, patient PWA, USSD simulator, demo landing), and handles the Africa's Talking USSD callback. The same SQLAlchemy models run on SQLite (demo/offline) and PostgreSQL (production) via Alembic migrations.</p>
+<ul>
+  <li><b>Channels:</b> USSD (Africa's Talking callback), patient PWA (installable, works offline-first), nurse web dashboard, walk-in/anonymous intake at the facility desk.</li>
+  <li><b>Core services:</b> intake, triage, booking (slots/appointments), queue, reminders (SMS with dedup), forecasting (slot demand), analytics, notify.</li>
+  <li><b>Intelligence:</b> rule-based red-flag safety net + gradient-boosting urgency classifier (model version <code>ml-v2</code>), loaded in-process via joblib with rules-only fallback.</li>
+  <li><b>Deployment:</b> <code>uvicorn</code> behind a Cloudflare tunnel for a public HTTPS URL; no external queue broker or cloud DB required.</li>
+</ul>
+
+<h2>3. AI triage engine</h2>
+<p>The triage pipeline is deliberately conservative — safety first, ML where it helps:</p>
+<ul>
+  <li><b>Feature extraction.</b> Free-text symptom description (Kiswahili/English) → keyword/phrase features, plus age and duration.</li>
+  <li><b>Rule-based red-flag layer.</b> Deterministic detection of emergencies (chest pain, stroke signs, severe bleeding, breathing difficulty, high fever in infants, etc.). This layer <i>always</i> overrides the model; if rules and model disagree, the safer outcome wins.</li>
+  <li><b>ML classifier.</b> Gradient boosting trained on 12,000 synthetic-but-clinically-shaped symptom profiles. Reported metrics (ml-v2, held-out set): overall accuracy <b>89.4%</b>, emergency recall <b>88.4%</b>. Every prediction is stamped with model version and reason for auditability.</li>
+  <li><b>Clinician feedback loop.</b> After consultation the nurse records the real urgency (<code>queue_entries.clinician_urgency</code>, <code>triage_sessions.clinician_urgency</code>). Prediction-vs-actual disagreement is retained for periodic retraining — the model is designed to improve from the people it assists.</li>
+  <li><b>Graceful degradation.</b> If the model file fails to load, the API reports it in <code>/api/v1/health</code> and serves rules-only triage rather than failing the session.</li>
+</ul>
+
+<h2>4. Fair queue engine</h2>
+<p>Queue order is urgency-banded FIFO with an ageing override: <code>priority = urgency_weight × 60 − minutes_waited</code>, so a GREEN patient who has waited long can overtake a fresh YELLOW arrival without ever overtaking RED. Emergency bypasses are allowed but individually flagged and auditable. Patients receive SMS reminders (one per appointment, dedup-guarded by <code>reminder_sent_at</code>) and can track their live position from the PWA or USSD menu <i>My appointments</i>.</p>
+
+<h2>5. Fairness &amp; accountability</h2>
+<p>The fairness report (<code>/fairness</code>) computes average and 90th-percentile waits grouped by sex, age band, facility, urgency level and walk-in vs booked. Group gaps are surfaced explicitly so staff and patients can see bias, and clinic policy can be corrected with evidence. Nurse urgency overrides are stored with actor and timestamp, keeping the human decision auditable.</p>
+
+<h2>6. Data model (summary)</h2>
+<table>
+  <tr><th>Entity</th><th>Key fields</th><th>Notes</th></tr>
+  <tr><td>patients</td><td>phone_number (nullable), is_anonymous, sex, age</td><td>Anonymous walk-ins without a SIM are supported</td></tr>
+  <tr><td>facilities</td><td>name, region, services, contact</td><td>Seeded: 5 facilities across Dodoma, Morogoro, Singida</td></tr>
+  <tr><td>slots / appointments</td><td>date, start/end time, capacity, booked, expected_wait_minutes; status, reminder_sent_at</td><td>Capacity-aware booking; forecast attaches expected wait</td></tr>
+  <tr><td>queue_entries</td><td>status, priority, joined_at/called_at/completed_at, is_emergency_bypass, clinician_urgency</td><td>Single live queue per facility</td></tr>
+  <tr><td>triage_sessions</td><td>symptoms, predicted urgency, model_version, clinician_urgency</td><td>Audit trail for the feedback loop</td></tr>
+</table>
+
+<h2>7. Verification &amp; testing</h2>
+<ul>
+  <li><b>107 automated tests passing</b> (pytest) covering triage rules, ML behaviour, USSD state machine (both languages), queue fairness logic, booking/reminders, and API endpoints.</li>
+  <li>Live USSD wiring verified against the Africa's Talking sandbox callback; SMS dedup verified by repeated reminder runs.</li>
+  <li>Model health exposed at <code>/api/v1/health</code>: loaded flag, version, algorithm, trained_at, accuracy and emergency recall.</li>
+</ul>
+
+<h2>8. Success metrics (from the original proposal)</h2>
+<table>
+  <tr><th>Metric</th><th>How the system measures it today</th></tr>
+  <tr><td>Reduced average physical wait time</td><td>Analytics records joined/called/completed per queue entry; report compares baseline vs post-pilot in minutes</td></tr>
+  <tr><td>% of triage sessions correctly deferring non-urgent cases</td><td>Triage outcome per session (<code>self_care_given</code>, <code>slot_booked</code>, <code>walk_in_directed</code>, <code>emergency_directed</code>) validated against the clinician feedback loop</td></tr>
+  <tr><td>Flatter demand curve</td><td>Hourly demand chart + forecast with per-slot expected wait steers patients off the 6–9 AM peak</td></tr>
+  <tr><td>Adoption rate (USSD booking vs walk-in, repeat usage)</td><td><code>is_walk_in</code> flag on every queue entry; repeat usage visible per patient phone number</td></tr>
+  <tr><td>Zero missed emergencies</td><td>Emergency-bypass flags are audited; clinician feedback compares predicted vs recorded urgency for incident review</td></tr>
+</table>
+
+<h2>9. Limitations &amp; next steps</h2>
+<ul>
+  <li><b>Triage rules are not clinically validated.</b> Medical sign-off is a stated prerequisite for any real deployment.</li>
+  <li><b>Training data is synthetic.</b> Real symptom phrasing (dialects, code-switching) will shift feature distributions; the feedback loop exists precisely to collect the real signal.</li>
+  <li><b>Reminder delivery</b> is SMS-only; IVR/WhatsApp channels and delivery-receipt reconciliation are planned.</li>
+  <li><b>Single-facility queue focus;</b> cross-facility referral hand-off is roadmap work.</li>
+</ul>
+<p>Next steps: 90-day pilot with 2–3 public dispensaries, clinical review board for the rules, then retraining on clinician-confirmed labels and TMDA / data-protection compliance work.</p>
+
+<div class="footer">Afya Smart · RIDC PT Innovation Hackathon 2026 · github.com/emmanuelbarnabas/afya-smart · Prototype — not for clinical use</div>
+
+</body>
+</html>

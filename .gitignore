@@ -40,3 +40,13 @@ blender-tmp/
 # Cloudflared binary (40MB) — inapakuliwa na tunnel.sh mara ya kwanza
 bin/cloudflared
 bin/cloudflared.new
+
+# Venv ya tools za submission (python-pptx, playwright)
+.venv-tools/
+
+# Video intermediates (webm + recordings) — MP4 pekee ndiyo final
+submission/.recordings/
+submission/*.webm
+
+# LibreOffice lock files
+.~lock.*#

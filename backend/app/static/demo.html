@@ -11,7 +11,7 @@
 <meta property="og:title" content="Afya Smart — Triage ya AI na Usimamizi wa Foleni" />
 <meta property="og:description" content="USSD + App kwa hospitali za umma — dharura hupangwa kwa akili." />
 <meta property="og:image" content="/icon-512.png" />
-<title>Afya Smart — Ukurasa wa Onyesho</title>
+<title>Afya Smart</title>
 <style>
   :root {
     --bg: #0f172a; --bezel: #1e293b; --card: #1e293b;
@@ -70,7 +70,7 @@
   <div class="brand">
     <img src="/icon-192.png" alt="Afya Smart" />
     <div>
-      <h1>Afya Smart — Ukurasa wa Onyesho</h1>
+      <h1>Afya Smart</h1>
       <div class="sub" style="margin:0;">AI-Powered Triage &amp; Queue Management for Fairer, Faster Public Healthcare</div>
     </div>
   </div>
@@ -114,39 +114,6 @@
     </a>
   </div>
 
-  <div class="section">
-    <h2>Onyesho la dakika 3</h2>
-    <div class="steps">
-      <ol>
-        <li>Fungua <b>Jaribio la USSD</b> hapo juu → bonyeza 📶 Piga</li>
-        <li>Chagua <b>1. Kiswahili</b> → onyesha menyu ya huduma 7</li>
-        <li>Andika <b>4</b> (Tafuta hospitali) → <b>2</b> (Dodoma) → <b>1</b> → angalia foleni/huduma/saa/mawasiliano</li>
-        <li>Session mpya → andika <b>1</b> (Kagua dalili) → jibu maswali → mgonjwa aingie foleni au apate ushauri</li>
-        <li><b>Fungua Dashboard</b> hapo juu — mgonjwa wa USSD anaonekana live kwenye foleni</li>
-      </ol>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Simu halisi (Africa's Talking)</h2>
-    <div class="steps">
-      Weka hii kwenye <b>Callback URL</b> ya channel yako kwenye dashi ya AT:
-      <p style="margin:8px 0 0;"><code id="callback"></code></p>
-      <div class="hint">Kisha piga kwenye simu iliyosajiliwa: <code>*384*&lt;channelID&gt;#</code></div>
-    </div>
-  </div>
-
-  <footer>
-    Afya Smart • backend hai kwa sasa • <span id="origin"></span>
-    <div class="credit">Picha: Wikimedia Commons (CC BY / CC BY-SA) — Hospitali ya Aga Khan DSM, Gonja Lutheran, Peramiho, na mfumo wa taarifa wa hospitali ya Tanzania.</div>
-  </footer>
 </div>
-<script>
-  // Kiungo cha callback ni hiki ukurasa unaosomeka (local au tunnel) —
-  // hivyo ukifungua ukurasa huu kwenye tunnel, callback inakuwa ya tunnel.
-  const origin = location.origin;
-  document.getElementById("callback").textContent = origin + "/api/v1/ussd";
-  document.getElementById("origin").textContent = origin;
-</script>
 </body>
 </html>

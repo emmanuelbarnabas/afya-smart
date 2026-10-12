@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f8fafc"/>
+  <rect x="0" y="0" width="1600" height="72" fill="url(#title)"/>
+  <text x="40" y="46" fill="#ffffff" font-size="28" font-weight="700">Afya Smart — Technical Architecture</text>
+  <text x="1560" y="46" fill="#dbeafe" font-size="16" text-anchor="end">Smart triage · USSD · slot booking · fair queue · SMS reminders</text>
+
+  <!-- ===== Layer 1: Access channels ===== -->
+  <text x="40" y="112" fill="#334155" font-size="18" font-weight="700">1 · ACCESS CHANNELS</text>
+
+  <g>
+    <rect x="40" y="130" width="340" height="120" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="210" y="162" text-anchor="middle" font-size="17" font-weight="700" fill="#1e293b">☎ Feature phone</text>
+    <text x="210" y="188" text-anchor="middle" font-size="14" fill="#475569">USSD dial *384# (no internet)</text>
+    <text x="210" y="210" text-anchor="middle" font-size="13" fill="#64748b">Kiswahili / English menus</text>
+    <text x="210" y="232" text-anchor="middle" font-size="13" fill="#64748b">Triage · booking · queue position</text>
+  </g>
+  <g>
+    <rect x="420" y="130" width="340" height="120" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="590" y="162" text-anchor="middle" font-size="17" font-weight="700" fill="#1e293b">📱 Smartphone (PWA)</text>
+    <text x="590" y="188" text-anchor="middle" font-size="14" fill="#475569">Patient app — installable PWA</text>
+    <text x="590" y="210" text-anchor="middle" font-size="13" fill="#64748b">Book · my appointments · live queue</text>
+    <text x="590" y="232" text-anchor="middle" font-size="13" fill="#64748b">Voice reminder opt-out (#10#)</text>
+  </g>
+  <g>
+    <rect x="800" y="130" width="340" height="120" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="970" y="162" text-anchor="middle" font-size="17" font-weight="700" fill="#1e293b">🖥 Clinic staff dashboard</text>
+    <text x="970" y="188" text-anchor="middle" font-size="14" fill="#475569">Reception & clinicians (web)</text>
+    <text x="970" y="210" text-anchor="middle" font-size="13" fill="#64748b">Live queue · call next · urgency</text>
+    <text x="970" y="232" text-anchor="middle" font-size="13" fill="#64748b">Slots · reminders · fairness report</text>
+  </g>
+  <g>
+    <rect x="1180" y="130" width="380" height="120" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="1370" y="162" text-anchor="middle" font-size="17" font-weight="700" fill="#1e293b">🏥 Walk-in at facility</text>
+    <text x="1370" y="188" text-anchor="middle" font-size="14" fill="#475569">Front desk registers patient</text>
+    <text x="1370" y="210" text-anchor="middle" font-size="13" fill="#64748b">Anonymous intake allowed (no SIM)</text>
+    <text x="1370" y="232" text-anchor="middle" font-size="13" fill="#64748b">Same triage + fair queue rules</text>
+  </g>
+
+  <!-- arrows down -->
+  <line x1="210" y1="250" x2="210" y2="318" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="590" y1="250" x2="590" y2="318" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="970" y1="250" x2="970" y2="318" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="1370" y1="250" x2="1370" y2="318" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="245" y="290" font-size="12" fill="#64748b">Africa's Talking</text>
+  <text x="620" y="290" font-size="12" fill="#64748b">HTTPS</text>
+  <text x="1000" y="290" font-size="12" fill="#64748b">HTTPS</text>
+
+  <!-- ===== Layer 2: API gateway / FastAPI ===== -->
+  <text x="40" y="345" fill="#334155" font-size="18" font-weight="700">2 · BACKEND — FastAPI (Python), versioned under /api/v1</text>
+  <rect x="40" y="360" width="1520" height="200" rx="12" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"/>
+
+  <g font-size="14">
+    <rect x="70" y="392" width="220" height="70" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="180" y="420" text-anchor="middle" font-weight="700" fill="#1e293b">ussd router</text>
+    <text x="180" y="442" text-anchor="middle" fill="#475569">session state machine</text>
+
+    <rect x="310" y="392" width="220" height="70" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="420" y="420" text-anchor="middle" font-weight="700" fill="#1e293b">triage service</text>
+    <text x="420" y="442" text-anchor="middle" fill="#475569">rules + ML ensemble</text>
+
+    <rect x="550" y="392" width="220" height="70" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="660" y="420" text-anchor="middle" font-weight="700" fill="#1e293b">booking service</text>
+    <text x="660" y="442" text-anchor="middle" fill="#475569">slots · appointments</text>
+
+    <rect x="790" y="392" width="220" height="70" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="900" y="420" text-anchor="middle" font-weight="700" fill="#1e293b">queue service</text>
+    <text x="900" y="442" text-anchor="middle" fill="#475569">FIFO + urgency priority</text>
+
+    <rect x="1030" y="392" width="220" height="70" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="1140" y="420" text-anchor="middle" font-weight="700" fill="#1e293b">reminders (SMS)</text>
+    <text x="1140" y="442" text-anchor="middle" fill="#475569">cron + dedup guard</text>
+
+    <rect x="1270" y="392" width="260" height="70" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="1400" y="420" text-anchor="middle" font-weight="700" fill="#1e293b">analytics / dashboard</text>
+    <text x="1400" y="442" text-anchor="middle" fill="#475569">KPIs · fairness report</text>
+
+    <rect x="70" y="484" width="220" height="58" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="180" y="508" text-anchor="middle" font-weight="700" fill="#1e293b">intake service</text>
+    <text x="180" y="528" text-anchor="middle" fill="#475569">walk-in registration</text>
+
+    <rect x="310" y="484" width="220" height="58" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="420" y="508" text-anchor="middle" font-weight="700" fill="#1e293b">notify service</text>
+    <text x="420" y="528" text-anchor="middle" fill="#475569">Africa's Talking SMS</text>
+
+    <rect x="550" y="484" width="220" height="58" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="660" y="508" text-anchor="middle" font-weight="700" fill="#1e293b">forecast service</text>
+    <text x="660" y="528" text-anchor="middle" fill="#475569">slot demand model</text>
+
+    <rect x="790" y="484" width="740" height="58" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+    <text x="1160" y="508" text-anchor="middle" font-weight="700" fill="#1e293b">Alembic migrations · seed data · pytest suite (107 tests)</text>
+    <text x="1160" y="528" text-anchor="middle" fill="#475569">SQLite (dev) / PostgreSQL (prod) — same SQLAlchemy models</text>
+  </g>
+
+  <!-- arrows to layer 3 -->
+  <line x1="900" y1="560" x2="900" y2="628" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ===== Layer 3: Intelligence + storage ===== -->
+  <text x="40" y="655" fill="#334155" font-size="18" font-weight="700">3 · INTELLIGENCE &amp; DATA</text>
+
+  <g>
+    <rect x="40" y="670" width="480" height="230" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="280" y="702" text-anchor="middle" font-size="16" font-weight="700" fill="#1e293b">🤖 ML triage (joblib, in-process)</text>
+    <text x="60" y="732" font-size="13" fill="#475569">• Symptom keyword extraction → structured features</text>
+    <text x="60" y="756" font-size="13" fill="#475569">• Rule-based red-flag safety net (always overrides)</text>
+    <text x="60" y="780" font-size="13" fill="#475569">• Gradient-boosting urgency classifier (ml-v2)</text>
+    <text x="60" y="804" font-size="13" fill="#475569">• Clinician feedback loop → retrain on recorded</text>
+    <text x="60" y="828" font-size="13" fill="#475569">  clinician_urgency vs predicted urgency</text>
+    <text x="60" y="860" font-size="13" fill="#64748b">Accuracy tracked per model version; fallback to</text>
+    <text x="60" y="882" font-size="13" fill="#64748b">rules-only if model fails to load.</text>
+  </g>
+
+  <g>
+    <rect x="560" y="670" width="480" height="230" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="800" y="702" text-anchor="middle" font-size="16" font-weight="700" fill="#1e293b">⚖ Fair queue engine</text>
+    <text x="580" y="732" font-size="13" fill="#475569">• FIFO base order + urgency priority bands</text>
+    <text x="580" y="756" font-size="13" fill="#475569">• Emergency bypass with audit flag</text>
+    <text x="580" y="780" font-size="13" fill="#475569">• Predicted wait per patient (forecast model)</text>
+    <text x="580" y="804" font-size="13" fill="#475569">• Fairness report: waits by gender, age band,</text>
+    <text x="580" y="828" font-size="13" fill="#475569">  urgency, walk-in vs booked</text>
+    <text x="580" y="860" font-size="13" fill="#64748b">Surfaces systematically longer waits so judges</text>
+    <text x="580" y="882" font-size="13" fill="#64748b">and staff can see and correct bias.</text>
+  </g>
+
+  <g>
+    <rect x="1080" y="670" width="480" height="230" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="1320" y="702" text-anchor="middle" font-size="16" font-weight="700" fill="#1e293b">🗄 Persistence &amp; integrations</text>
+    <text x="1100" y="732" font-size="13" fill="#475569">• PostgreSQL / SQLite — patients, facilities, slots,</text>
+    <text x="1100" y="752" font-size="13" fill="#475569">  appointments, queue_entries, triage_sessions</text>
+    <text x="1100" y="780" font-size="13" fill="#475569">• Africa's Talking — USSD callback + SMS reminders</text>
+    <text x="1100" y="804" font-size="13" fill="#475569">• Cloudflared tunnel — public HTTPS URL</text>
+    <text x="1100" y="828" font-size="13" fill="#475569">• Static PWA assets served by the same FastAPI app</text>
+    <text x="1100" y="860" font-size="13" fill="#64748b">Single deployable service; no external DB or queue</text>
+    <text x="1100" y="882" font-size="13" fill="#64748b">broker required — runs offline-first.</text>
+  </g>
+
+  <!-- bottom flow note -->
+  <rect x="40" y="920" width="1520" height="56" rx="10" fill="#1d4ed8"/>
+  <text x="800" y="955" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="600">Typical flow: *384# → describe symptoms → ML triage assigns urgency → book nearest facility slot → SMS reminder → fair queue position → clinician confirms → feedback retrains model</text>
+</svg>
