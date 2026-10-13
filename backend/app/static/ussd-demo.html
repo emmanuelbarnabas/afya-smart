@@ -61,7 +61,7 @@
 </head>
 <body>
   <h1>Afya Smart — Jaribio la USSD</h1>
-  <div class="hint">Simu hii ni ya majaribio: bonyeza namba kufuata menyu za code yako ya USSD. Uunganishwa na backend halisi ya Afya Smart.</div>
+  <div class="hint">Simu ya majaribio: bonyeza <b>namba</b> kisha kitufe cha <b>kijani (📤 Tuma jibu)</b> ili kufuata menyu za USSD. Unaweza pia kutumia <b>kiboard ya kompyuta</b> — namba 1-0, <b>Enter</b>=Tuma, <b>Backspace</b>=Futa.</div>
 
   <div class="who">
     <input id="phone" value="+255700000001" inputmode="tel" aria-label="Namba ya simu" />
@@ -114,7 +114,10 @@
     }
   }).catch(() => {});
 
+  let currentText = "";   // skrini ya sasa — keypad inairejesha ukiweka cursor
+
   function render(text, kind) {
+    currentText = text;
     content.className = kind === "end" ? "end-msg" : "con-msg";
     const cursor = state === "con" && buffer ? `<span class="cursor">${buffer}</span>` : "";
     content.innerHTML = escapeHtml(text) + (cursor ? "\n> " + cursor : "");
@@ -130,6 +133,7 @@
     content.innerHTML = "Bonyeza kitufe cha kijani<br/>kupiga " + serviceCode;
     sessionInfo.textContent = "Hakuna session";
     btnCall.textContent = "📶 Piga " + serviceCode;
+    btnClear.textContent = "Futa input ▸";
   }
 
   async function send(text) {
@@ -151,7 +155,9 @@
     if (raw.startsWith("CON ")) {
       state = "con"; buffer = "";
       render(raw.slice(4), "con");
-      btnCall.textContent = "⏹ Maliza session";
+      // Kitufe cha kijani hapa KINA TUMA jibu (si kumaliza) — andika wazi.
+      btnCall.textContent = "📤 Tuma jibu ▸";
+      btnClear.textContent = "✖ Maliza session";
     } else if (raw.startsWith("END ")) {
       state = "end";
       render(raw.slice(4) + "\n\n— Session imekwisha —", "end");
@@ -171,23 +177,39 @@
     send("");
   }
 
-  // Keypad: kila namba inaongezwa kwenye buffer; kitufe cha kijanikinatuma
+  // Keypad: kila namba inaongezwa kwenye buffer; kitufe cha kijani kinatuma
   document.getElementById("keypad").addEventListener("click", (ev) => {
     const k = ev.target.closest(".key")?.dataset.k;
     if (!k || state !== "con") return;
-    if (k === "*" || k === "#") return; // hazitumiki kwenye menyu hizi
+    if (k === "*" || k === "#") { flashHint("Kibo hiki hakiotumika kwenye menyu hizi"); return; }
     buffer += k;
     render(currentText, "con");
   });
 
-  let currentText = "";
+  // KiBoard ya kompyuta pia inafanya kazi: namba 1-0 hurithi, Enter = Tuma,
+  // Backspace = futa herufi ya mwisho.
+  document.addEventListener("keydown", (ev) => {
+    if (state !== "con" || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (/^[0-9]$/.test(ev.key)) { buffer += ev.key; render(currentText, "con"); ev.preventDefault(); }
+    else if (ev.key === "Enter") { btnCall.click(); ev.preventDefault(); }
+    else if (ev.key === "Backspace" && buffer) { buffer = buffer.slice(0, -1); render(currentText, "con"); ev.preventDefault(); }
+  });
 
-  const _render = render;
-  render = function (text, kind) { currentText = text; _render(text, kind); };
+  let hintTimer = null;
+  function flashHint(msg) {
+    sessionInfo.textContent = msg || "Bonyeza namba kwanza, kisha '📤 Tuma jibu'";
+    sessionInfo.style.color = "#fbbf24";
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => {
+      sessionInfo.style.color = "";
+      if (session) sessionInfo.textContent = "Session: " + session.id.slice(0, 18) + "… · " + session.phone;
+      else sessionInfo.textContent = "Hakuna session";
+    }, 2500);
+  }
 
   btnCall.addEventListener("click", () => {
     if (state === "con") {
-      if (!buffer) return;                       // hakuna cha kutuma
+      if (!buffer) { flashHint(); return; }      // buffer tupu — onyesha onyo, usikime kimya
       path.push(buffer); buffer = "";
       send(path.join("*"));
     } else {
@@ -199,6 +221,9 @@
     if (state === "con" && buffer) {
       buffer = buffer.slice(0, -1);
       render(currentText, "con");
+    } else if (state === "con") {
+      setIdle();   // buffer tupu + session hai → maliza session
+      sessionInfo.textContent = "Session imefungwa";
     }
   });
 </script>
