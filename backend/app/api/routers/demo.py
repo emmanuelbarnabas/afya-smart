@@ -27,38 +27,6 @@ def ussd_demo():
 def demo_landing():
     """Ukurasa mmoja wa onyesho — viungo vyote + hatua za demo (rangi ya bluu)."""
     return FileResponse(_STATIC / "demo.html", media_type="text/html")
-
-
-# Icon za mfumo (PNG halisi zilizotengenezwa na scripts/gen_icons.py)
-_ICON_TYPES = {
-    "icon-512.png": "image/png",
-    "icon-192.png": "image/png",
-    "apple-touch-icon.png": "image/png",
-    "icon-32.png": "image/png",
-}
-
-
-@router.get("/{icon_name}", include_in_schema=False)
-def system_icons(icon_name: str):
-    """Icon za mfumo (favicon, apple-touch, pwa) + picha za onyesho.
-
-    Limezuia route nyingine za mzizi kama /dashboard, /app, /mobile
-    (zilizosajiliwa baada ya router hii) — kwa hivyo jina linapaswa
-    kuwa moja ya taratibu zilizojulikana tu.
-    """
-    if icon_name in _ICON_TYPES:
-        return FileResponse(_STATIC / icon_name, media_type=_ICON_TYPES[icon_name])
-    if icon_name == "favicon.ico":
-        return FileResponse(_STATIC / "icon-32.png", media_type="image/png")
-    # Picha za onyesho (hero, cards) — kwenye static/img/
-    img_dir = _STATIC / "img"
-    if img_dir.is_dir():
-        target = (img_dir / icon_name).resolve()
-        if img_dir.resolve() in target.parents and target.is_file():
-            return FileResponse(target, media_type="image/jpeg")
-    return JSONResponse({"detail": "Not found"}, status_code=404)
-
-
 @router.get("/ussd-config", include_in_schema=False)
 def ussd_config():
     """Service code halisi ya channel (kwa simulator ya demo/dashibodi)."""
@@ -107,3 +75,38 @@ def my_queue(phone: str = Query(..., min_length=6), db: Session = Depends(get_db
         "waiting": waiting,
         "emergency": entry.is_emergency_bypass,
     }
+
+
+# --------------------------------------------------------------------------
+# Icon za mfumo (PNG halisi zilizotengenezwa na scripts/gen_icons.py)
+# ROUTE YA MWISHO: `{icon_name}` ni catch-all — kama isajiliwe kabla ya
+# /ussd-config, /my-queue n.k. inawazuia (FastAPI hupangia kwa mpangilio wa
+# usajili). Iliibwa kutoka juu baada ya kugundua /ussd-config na /my-queue
+# zilikuwa zinarudisha 404.
+# --------------------------------------------------------------------------
+_ICON_TYPES = {
+    "icon-512.png": "image/png",
+    "icon-192.png": "image/png",
+    "apple-touch-icon.png": "image/png",
+    "icon-32.png": "image/png",
+}
+
+
+@router.get("/{icon_name}", include_in_schema=False)
+def system_icons(icon_name: str):
+    """Icon za mfumo (favicon, apple-touch, pwa) + picha za onyesho.
+
+    Lazima ibaki route ya MWISHO ya router hii — catch-all inazuia kila
+    route iliyosajiliwa baada yake.
+    """
+    if icon_name in _ICON_TYPES:
+        return FileResponse(_STATIC / icon_name, media_type=_ICON_TYPES[icon_name])
+    if icon_name == "favicon.ico":
+        return FileResponse(_STATIC / "icon-32.png", media_type="image/png")
+    # Picha za onyesho (hero, cards) — kwenye static/img/
+    img_dir = _STATIC / "img"
+    if img_dir.is_dir():
+        target = (img_dir / icon_name).resolve()
+        if img_dir.resolve() in target.parents and target.is_file():
+            return FileResponse(target, media_type="image/jpeg")
+    return JSONResponse({"detail": "Not found"}, status_code=404)
