@@ -1,0 +1,56 @@
+# =============================================================================
+# Afya Smart — Render blueprint
+# Huduma mbili za umma, zote kwa Docker, kutoka repo hii:
+#   afya-api  → FastAPI platform (:8000) — API, dashboard, USSD callback
+#   afya-web  → Flask prototype  (:5000) — USSD demo, fairness report
+#
+# Jinsi ya kutumia:
+#   1. Push repo hii kwenye GitHub
+#   2. Render dashboard → New → Blueprint → chagua repo hii
+#   3. Render atasoma faili hii na kujenga huduma zote mbili.
+# Mapitio ya bei: render.com/pricing (free tier inazima kwa utulivu baada ya
+# dakika 15 bila matumizi — inapoinuka inachukua ~1 dakika).
+# =============================================================================
+services:
+  - type: web
+    name: afya-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      # SQLite ya ndani ya container (free tier: data huwekwa upya kila deploy
+      # mpya). Kwa data ya kudumu ongeza disk chini au tumia PostgreSQL ya
+      # Render na weka DATABASE_URL hapa.
+      - key: DATABASE_URL
+        value: sqlite:///./afyasmart.db
+      # Africa's Talking — weka thamani kutoka https://account.africastalking.com
+      # (Sandbox: AT_USERNAME=sandbox). Zote ni secrets; zitaonyeshwa kama ****.
+      - key: AT_USERNAME
+        sync: false
+      - key: AT_API_KEY
+        sync: false
+      - key: AT_PHONE_NUMBER
+        sync: false
+      - key: USSD_SERVICE_CODE
+        value: "*384#"
+    # Kwa data ya kudumu (sanaa): bofya "Advanced" → weka disk, kisha
+    # badilisha DATABASE_URL ya juu kuwa sqlite:///./data/afyasmart.db
+    # disk:
+    #   name: afya-api-data
+    #   sizeGB: 1
+    #   mountPath: /app/backend/data
+
+  - type: web
+    name: afya-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile.web
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true

@@ -1,4 +1,5 @@
 # Python 3.12+
 Flask==3.1.3
 Werkzeug>=3.1
+gunicorn>=23.0       # WSGI server ya production (Render/Heroku) — si dev server
 pytest>=8.3

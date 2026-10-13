@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+# =============================================================================
+# Afya Smart — prototype image (Flask :5000)
+# Dashboard ya muuguzi, USSD simulator na fairness report kutoka app.py.
+#
+#   docker build -f Dockerfile.web -t afya-web .
+# =============================================================================
+
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Prototype ni faili tambarare tu — hakuna build step.
+COPY app.py triage.py queue_engine.py ussd.py fairness.py seed_data.py ./
+COPY templates/ ./templates/
+
+EXPOSE 5000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3).status==200 else 1)"
+
+# gunicorn si Flask dev server. SQLite inaserialize writes, hivyo -w 1 tu.
+CMD sh -c "python seed_data.py --count 100 >/dev/null 2>&1 || true; exec gunicorn -w 1 -b 0.0.0.0:5000 --timeout 60 app:app"

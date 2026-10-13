@@ -1,0 +1,45 @@
+# Git / AI tooling
+.git
+.github
+.freebuff
+.gitignore
+
+# Python envs + caches
+.venv
+.venv-tools
+backend/.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+backend/.pytest_cache
+
+# Node (frontend stage hujenga upya kutoka package.json)
+**/node_modules
+**/dist
+
+# Local databases (si sehemu ya image). `**/` inahitajika — `*.db` pekee
+# inachangia faili za mzizi tu, backend/afyasmart.db ingeingia ndani ya image.
+**/*.db
+**/*.db-journal
+**/*.sqlite
+**/*.sqlite3
+
+# Secrets — env hutolewa kwenye Render dashboard, si image
+.env
+backend/.env
+
+# Hazihitajiki kwenye image
+infra
+pptx
+blender-tmp
+submission
+docs
+tests
+backend/tests
+backend/pip_install.log
+tunnel.sh
+dev.sh
+start-all.sh
+at-setup.sh
+test-at-key.sh
+push-gitlab.sh

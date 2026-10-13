@@ -118,6 +118,15 @@ export const DoorIcon = make(
   </>
 );
 
+export const CalendarIcon = make(
+  <>
+    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+    <path d="M16 2v4" />
+    <path d="M8 2v4" />
+    <path d="M3 10h18" />
+  </>
+);
+
 export const ClipboardIcon = make(
   <>
     <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
