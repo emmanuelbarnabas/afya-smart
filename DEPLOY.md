@@ -4,8 +4,8 @@ Hali hii inafanya mfumo wote uwe na **URL za umma** — si `localhost` pekee:
 
 | Huduma | Ina nini | URL ya umma |
 |---|---|---|
-| `afya-api` | FastAPI platform: API, dashboard ya muuguzi, patient app, mobile PWA, **USSD callback** | `https://afya-api-xxxx.onrender.com` |
-| `afya-web` | Flask prototype: USSD simulator, fairness report | `https://afya-web-xxxx.onrender.com` |
+| `afya-api` | FastAPI platform: API, dashboard ya muuguzi, patient app, mobile PWA, **USSD callback** | `https://afya-api-8sr6.onrender.com` |
+| `afya-web` | Flask prototype: USSD simulator, fairness report | `https://afya-web-3ymc.onrender.com` |
 
 Faili zilizotengenezwa kwa ajili ya hii: `backend/Dockerfile`, `Dockerfile.web`,
 `.dockerignore`, `backend/start.sh`, `render.yaml`.
@@ -31,13 +31,13 @@ git push origin main
    kila service, kisha **Manual Deploy → Clear cache & deploy**.
 4. Suburu jenga (~5–10 dakika mara ya kwanza; dashboard zote zinajengwa ndani
    ya image). Kisha angalia:
-   - `https://afya-api-xxxx.onrender.com/api/v1/health`
-   - `https://afya-web-xxxx.onrender.com/health`
+   - `https://afya-api-8sr6.onrender.com/api/v1/health`
+   - `https://afya-web-3ymc.onrender.com/health`
 
 ## Hatua 3 — Callback ya Africa's Talking
 
 1. Fungua https://account.africastalking.com → **Sandbox** → **USSD**.
-2. **Callback URL** weka: `https://afya-api-xxxx.onrender.com/api/v1/ussd`
+2. **Callback URL** weka: `https://afya-api-8sr6.onrender.com/api/v1/ussd`
 3. Servicing code: `*384#` (au code uliyopewa na AT sandbox).
 4. Piga `*384#` kwenye simu ya sandbox na ufuate mfululizo.
 
@@ -62,9 +62,9 @@ git push origin main
 ## Uthibitisho (baada ya deploy)
 
 ```
-API health      : curl https://afya-api-xxxx.onrender.com/api/v1/health
-USSD callback   : curl -X POST https://afya-api-xxxx.onrender.com/api/v1/ussd \
+API health      : curl https://afya-api-8sr6.onrender.com/api/v1/health
+USSD callback   : curl -X POST https://afya-api-8sr6.onrender.com/api/v1/ussd \
                   -d "phoneNumber=+255712345678" -d "text="
-Dashboard       : fungua https://afya-api-xxxx.onrender.com/
-Prototype health: curl https://afya-web-xxxx.onrender.com/health
+Dashboard       : fungua https://afya-api-8sr6.onrender.com/
+Prototype health: curl https://afya-web-3ymc.onrender.com/health
 ```
