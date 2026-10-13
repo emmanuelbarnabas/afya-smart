@@ -2,6 +2,7 @@
 // Simu ya bandia inayoita callback HALISI ya backend (/api/v1/ussd) — flow ileile
 // ya AT/SMS gateway, ila ndani ya app yako. Service code inaletwa na /ussd-config.
 import { useEffect, useRef, useState } from "react";
+import Logo from "./Logo.jsx";
 
 const KEYS = [
   { k: "1", sub: "\u00a0" },
@@ -157,7 +158,9 @@ export default function App() {
   if (splash) {
     return (
       <div className="msplash" onClick={() => setSplash(false)}>
-        <span className="msplash-logo">✚</span>
+        <span className="msplash-logo">
+          <Logo size={84} />
+        </span>
         <h1>Afya Smart</h1>
         <p>USSD Triage — Afya kwa wote</p>
       </div>
@@ -167,7 +170,9 @@ export default function App() {
   return (
     <div className="mapp">
       <header className="mapp-head">
-        <span className="mapp-logo">✚</span>
+        <span className="mapp-logo">
+          <Logo size={38} />
+        </span>
         <div>
           <h1>Afya Smart</h1>
           <p>USSD Triage</p>

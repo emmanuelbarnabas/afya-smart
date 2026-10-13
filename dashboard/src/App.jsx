@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import StatsCards from "./components/StatsCards.jsx";
+import Logo from "./components/Logo.jsx";
 import QueuePanel from "./components/QueuePanel.jsx";
 import AnalyticsPanel from "./components/AnalyticsPanel.jsx";
 import RemindersPanel from "./components/RemindersPanel.jsx";
@@ -181,7 +182,9 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="header-brand">
-          <span className="brand-mark">A</span>
+          <span className="brand-mark">
+            <Logo size={48} />
+          </span>
           <div>
             <h1>Afya Smart</h1>
             <p className="subtitle">

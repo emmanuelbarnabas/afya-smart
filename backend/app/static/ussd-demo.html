@@ -19,7 +19,8 @@
     align-items: center; justify-content: center; gap: 14px;
     background: var(--bg); font-family: system-ui, sans-serif; padding: 16px;
   }
-  h1 { color: #e2e8f0; font-size: 1rem; margin: 0; font-weight: 600; }
+  h1 { color: #e2e8f0; font-size: 1rem; margin: 0; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  h1 .brand-logo { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; }
   .hint { color: var(--dim); font-size: .8rem; text-align: center; max-width: 320px; }
   .phone {
     width: 300px; background: var(--bezel); border-radius: 28px; padding: 14px;
@@ -60,7 +61,20 @@
 </style>
 </head>
 <body>
-  <h1>Afya Smart — Jaribio la USSD</h1>
+  <h1>
+    <svg class="brand-logo" viewBox="0 0 64 64" role="img" aria-label="Afya Smart">
+      <defs>
+        <linearGradient id="afyaGrad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="64">
+          <stop offset="0" stop-color="#16a066"/>
+          <stop offset="1" stop-color="#085c39"/>
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="20" fill="url(#afyaGrad)"/>
+      <path fill="#ffffff" d="M32 50 C21 42.5 15 35 15 27.5 C15 21.7 19.6 17 25.4 17 C28.7 17 31.2 18.7 32 21.4 C32.8 18.7 35.3 17 38.6 17 C44.4 17 49 21.7 49 27.5 C49 35 43 42.5 32 50 Z"/>
+      <path fill="none" stroke="url(#afyaGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" d="M7 31 H19 L22.5 24 L26.5 39 L31 26.5 L34 31 H57"/>
+    </svg>
+    Afya Smart — Jaribio la USSD
+  </h1>
   <div class="hint">Simu ya majaribio: bonyeza <b>namba</b> kisha kitufe cha <b>kijani (📤 Tuma jibu)</b> ili kufuata menyu za USSD. Unaweza pia kutumia <b>kiboard ya kompyuta</b> — namba 1-0, <b>Enter</b>=Tuma, <b>Backspace</b>=Futa.</div>
 
   <div class="who">

@@ -99,6 +99,8 @@ def system_icons(icon_name: str):
     Lazima ibaki route ya MWISHO ya router hii — catch-all inazuia kila
     route iliyosajiliwa baada yake.
     """
+    if icon_name == "logo.svg":
+        return FileResponse(_STATIC / "logo.svg", media_type="image/svg+xml")
     if icon_name in _ICON_TYPES:
         return FileResponse(_STATIC / icon_name, media_type=_ICON_TYPES[icon_name])
     if icon_name == "favicon.ico":

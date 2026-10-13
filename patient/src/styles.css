@@ -34,6 +34,16 @@ body {
   min-height: 100dvh;
 }
 
+.papp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.papp-logo {
+  flex-shrink: 0;
+}
+
 .papp-head h1 {
   margin: 0;
   font-size: 1.4rem;

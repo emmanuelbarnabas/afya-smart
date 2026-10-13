@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import MyQueue from "./MyQueue.jsx";
 import Booking from "./Booking.jsx";
 import UssdSim from "./UssdSim.jsx";
+import Logo from "./Logo.jsx";
 
 const POLL_MS = 10000;
 
@@ -33,6 +34,7 @@ export default function App() {
   return (
     <div className="papp">
       <header className="papp-head">
+        <Logo size={44} className="papp-logo" />
         <div>
           <h1>Afya Smart</h1>
           <p className="papp-sub">

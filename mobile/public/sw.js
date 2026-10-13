@@ -2,7 +2,7 @@
  * Cache-first kwa shell (index + assets + icons) — app inafunguka hata offline.
  * Network-first kwa /api/ na /ussd-config — data ya foleni iwe fresh.
  */
-const CACHE = "afya-ussd-v1";
+const CACHE = "afya-ussd-v2";
 const SHELL = [
   "/mobile/",
   "/mobile/manifest.webmanifest",
