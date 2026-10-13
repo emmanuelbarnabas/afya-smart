@@ -182,11 +182,10 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="header-brand">
-          <span className="brand-mark">
-            <Logo size={48} />
-          </span>
           <div>
-            <h1>Afya Smart</h1>
+            <h1>
+              <Logo height={42} />
+            </h1>
             <p className="subtitle">
               Dashibodi ya Kituo — {facility?.name ?? "..."}
             </p>

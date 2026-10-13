@@ -1,10 +1,9 @@
-"""Tengeneza icon za mfumo (moyo + ECG pulse) bila PIL — PNG halisi.
+"""Tengeneza icon za mfumo (herufi 'A' + pulse) bila PIL — PNG halisi.
 
-Muundo SAWA na logo.svg / Logo.jsx (viewBox 64):
+Muundo SAWA na logo.svg / Logo.jsx (viewBox 64), unatokana na jina "Afya Smart":
   * kisanduku cha kijani cha gradient (#16a066 → #085c39), pembe za mviringo
-  * moyo mweupe katikati (implicit heart curve)
-  * mstari wa ECG unaokatiza moyo — rangi ya background (cut) ili uonekane
-    kama mstari unapita ndani ya moyo, na usionekane nje yake
+  * herufi NYEWEPE 'A' (stencil: migu miwili + crossbar) — herufi ya kwanza ya "Afya"
+  * mstari wa pulse (ECG) chini ya 'A' — alama ya afya / maisha
 
 Hufanya supersampling 3x kwa anti-aliasing laini, kisha inahifadhi ukubwa
 halisi: backend (512/192/180/32) + mobile PWA (192/512/maskable/180).
@@ -26,25 +25,30 @@ GREEN_TOP = (22, 160, 102)    # #16a066
 GREEN_BOTTOM = (8, 92, 57)    # #085c39
 WHITE = (255, 255, 255)
 
-# Moyo: (hx² + hy² − 1)³ − hx²·hy³ ≤ 0 (y + juu; hy=0 ni kiwango cha kando)
-_HEART_CX = 0.5
-_HEART_Y0 = 0.5496   # y ambapo hy = 0 (imeletwa ili moyo ulingane na wa SVG)
-_HEART_S = 0.229     # scale — upana ≈ 0.53 ya tile (kama SVG 34/64)
+# Herufi 'A' — quad3 za kila umbo (nukta4 kila moja; ndani ya YOYOTE = ndani)
+# Pembe: (topL, topR, botR, botL) kwa coords ya tile (0..1, y + chini)
+_A_QUADS = (
+    # Mguu wa kushoto (slope −0.5)
+    ((0.47, 0.21), (0.53, 0.21), (0.31, 0.65), (0.25, 0.65)),
+    # Mguu wa kulia (slope +0.5)
+    ((0.47, 0.21), (0.53, 0.21), (0.75, 0.65), (0.69, 0.65)),
+    # Crossbar (mraba)
+    ((0.35, 0.50), (0.65, 0.50), (0.65, 0.555), (0.35, 0.555)),
+)
 
-# Pulse (ECG): pointi za mstari kwa coords ya tile (SVG path ÷ 64)
+# Pulse (ECG) chini ya 'A': pointi za mstari kwa coords ya tile (SVG path ÷ 64)
 _PULSE_PTS = [
-    (0.1094, 0.4844),  # M7 31
-    (0.2969, 0.4844),  # H19
-    (0.3516, 0.3750),  # L22.5 24 (piko juu)
-    (0.4141, 0.6094),  # L26.5 39 (piko chini)
-    (0.4844, 0.4141),  # L31 26.5
-    (0.5313, 0.4844),  # L34 31
-    (0.8906, 0.4844),  # H57
+    (0.13, 0.74),    # M8.3 47.4
+    (0.42, 0.74),    # H26.9
+    (0.465, 0.695),  # L29.8 44.5 (piko juu)
+    (0.525, 0.795),  # L33.6 50.9 (piko chini)
+    (0.575, 0.74),   # L36.8 47.4
+    (0.87, 0.74),    # H55.7
 ]
-_PULSE_HALF_W = 0.03125  # stroke-width 4/64 ÷ 2
+_PULSE_HALF_W = 0.026  # stroke-width 3.3/64 ÷ 2
 
-_TILE_RADIUS = 0.3125    # rx 20/64 — kama logo.svg
-_MASKABLE_ZOOM = 1.25     # artwork ndani ya safe zone ya 80% (maskable icons)
+_TILE_RADIUS = 0.3125  # rx 20/64 — kama logo.svg
+_MASKABLE_ZOOM = 1.25   # artwork ndani ya safe zone ya 80% (maskable icons)
 
 
 def _write_png(path: Path, w: int, h: int, rgba_rows: list[bytes]) -> None:
@@ -76,13 +80,28 @@ def _inside_rounded_square(x: float, y: float, r: float) -> bool:
     return False
 
 
-def _inside_heart(x: float, y: float) -> bool:
-    """Moyo wa implicit curve (kama wa SVG) — coords ya tile (0..1), y + chini."""
-    hx = (x - _HEART_CX) / _HEART_S
-    hy = (_HEART_Y0 - y) / _HEART_S  # flip: screen y = chini, curve y = juu
-    if hx < -1.2 or hx > 1.2 or hy < -1.05 or hy > 1.3:
+def _in_quad(x: float, y: float, quad) -> bool:
+    """Ndani ya polygon ya nukta4 (convex) — ray/orientation ya kulia/zote."""
+    sign = 0
+    for i in range(4):
+        x0, y0 = quad[i]
+        x1, y1 = quad[(i + 1) % 4]
+        cross = (x1 - x0) * (y - y0) - (y1 - y0) * (x - x0)
+        if cross == 0:
+            continue
+        s = 1 if cross > 0 else -1
+        if sign == 0:
+            sign = s
+        elif s != sign:
+            return False
+    return True
+
+
+def _inside_letter_a(x: float, y: float) -> bool:
+    """Herufi 'A' — union ya quad3 (migu2 + crossbar)."""
+    if x < 0.23 or x > 0.77 or y < 0.19 or y > 0.67:
         return False  # epua hesabu nyingi kwa pixels za nje
-    return (hx * hx + hy * hy - 1.0) ** 3 - hx * hx * hy**3 <= 0
+    return any(_in_quad(x, y, q) for q in _A_QUADS)
 
 
 def _pulse_y(x: float) -> float | None:
@@ -111,12 +130,13 @@ def _sample(x: float, y: float, radius: float, zoom: float) -> tuple[int, int, i
     # Artwork coords (maskable: artwork ndani ya 80% ya safe zone)
     ax = 0.5 + (x - 0.5) * zoom
     ay = 0.5 + (y - 0.5) * zoom
-    color = _tile_color(x, y)  # gradient ya background inashika screen zima
-    if _inside_heart(ax, ay):
-        color = WHITE
+    white = False
+    if _inside_letter_a(ax, ay):
+        white = True
+    else:
         ecg = _pulse_y(ax)
-        if ecg is not None and abs(ay - ecg) < _PULSE_HALF_W:
-            color = _tile_color(x, y)  # cut: mstari wa ECG = rangi ya background
+        white = ecg is not None and abs(ay - ecg) < _PULSE_HALF_W
+    color = WHITE if white else _tile_color(x, y)  # gradient ya background
     return (*color, 255)
 
 

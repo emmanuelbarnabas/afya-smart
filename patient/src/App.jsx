@@ -34,9 +34,10 @@ export default function App() {
   return (
     <div className="papp">
       <header className="papp-head">
-        <Logo size={44} className="papp-logo" />
         <div>
-          <h1>Afya Smart</h1>
+          <h1>
+            <Logo height={36} />
+          </h1>
           <p className="papp-sub">
             {PAGES.find((p) => p.id === page)?.label ?? ""} — App ya Mgonjwa
           </p>

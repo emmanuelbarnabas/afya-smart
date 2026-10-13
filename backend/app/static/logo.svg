@@ -7,6 +7,10 @@
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="20" fill="url(#afyaGrad)"/>
-  <path fill="#ffffff" d="M32 50 C21 42.5 15 35 15 27.5 C15 21.7 19.6 17 25.4 17 C28.7 17 31.2 18.7 32 21.4 C32.8 18.7 35.3 17 38.6 17 C44.4 17 49 21.7 49 27.5 C49 35 43 42.5 32 50 Z"/>
-  <path fill="none" stroke="url(#afyaGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" d="M7 31 H19 L22.5 24 L26.5 39 L31 26.5 L34 31 H57"/>
+  <!-- Herufi 'A' ya Afya Smart (stencil: migu miwili + crossbar) -->
+  <path fill="#ffffff" d="M30.1 13.4 H33.9 L19.8 41.6 H16 Z"/>
+  <path fill="#ffffff" d="M30.1 13.4 H33.9 L48 41.6 H44.2 Z"/>
+  <rect x="22.4" y="32" width="19.2" height="3.5" fill="#ffffff"/>
+  <!-- Pulse ya afya chini ya 'A' -->
+  <path fill="none" stroke="#ffffff" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round" d="M8.3 47.4 H26.9 L29.8 44.5 L33.6 50.9 L36.8 47.4 H55.7"/>
 </svg>
